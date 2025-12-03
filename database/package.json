@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.86.0",
+    "supabase": "^2.65.3"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/test.ts"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.3",
+    "tsx": "^4.21.0"
+  }
+}
