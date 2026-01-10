@@ -6,8 +6,6 @@ import os
 import requests
 from urllib.parse import urlparse
 
-link_to_pdfs = []
-
 # Initialize driver as None - will be created when needed
 driver = None
 
@@ -35,7 +33,7 @@ def save_links_to_file(links, filepath):
             f.write(link + '\n')
     print(f"Saved {len(links)} links to {filepath}")
 
-def download_pdf(url, output_dir, session=None):
+def download_pdf(url, output_dir, session):
     """Download a single PDF from URL"""
     try:
         # Create session if not provided
@@ -73,7 +71,7 @@ def download_pdf(url, output_dir, session=None):
         print(f"Error downloading {url}: {e}")
         return None
 
-def download_all_pdfs(pdf_links, output_dir, delay=1):
+def download_all_pdfs(pdf_links, output_dir, delay=True):
     """Download all PDFs from a list of links"""
     ensure_dir(output_dir)
     session = requests.Session()
@@ -96,7 +94,7 @@ def download_all_pdfs(pdf_links, output_dir, delay=1):
             failed_downloads += 1
         
         # Be nice to the server
-        time.sleep(delay)
+        if delay: time.sleep(0.2)
     
     print(f"\nDownload complete!")
     print(f"Successful: {successful_downloads}")
@@ -111,7 +109,7 @@ def page_scrape(link):
         init_driver()
         
     driver.get(link)
-    time.sleep(2)  # Wait for page to load
+    driver.implicitly_wait(2)  # Wait for page to load
     
     pdf_links = []
     
@@ -180,7 +178,7 @@ def scrape_monthly_arxiv(subj, year=2026, month=1):
         page_num += 1
         
         # Be nice to the server
-        time.sleep(2)
+        time.sleep(0.2)
     
     print(f"Total papers found: {len(all_pdf_links)}")
     return all_pdf_links
