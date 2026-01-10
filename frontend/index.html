@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Topical Summaries</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Topical Summaries</h1>
+        <p class="subtitle">
+          Browse sample papers or paste your own text to generate summaries via the Topical backend.
+        </p>
+      </div>
+      <button id="refresh-files" class="secondary-button">Refresh Files</button>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Summarize a Local File</h2>
+        <p class="helper-text">
+          Files are read from <code>backend/data</code>. Add more <code>.txt</code> or <code>.md</code> files,
+          then click refresh.
+        </p>
+        <div class="form-group">
+          <label for="file-select">Choose a file:</label>
+          <select id="file-select"></select>
+        </div>
+        <div class="form-group">
+          <label for="file-topic">Topic (optional):</label>
+          <input id="file-topic" type="text" placeholder="e.g., Machine Learning" />
+        </div>
+        <button id="summarize-file" class="primary-button">Summarize File</button>
+      </section>
+
+      <section class="panel">
+        <h2>Summarize Custom Text</h2>
+        <div class="form-group">
+          <label for="text-topic">Topic (optional):</label>
+          <input id="text-topic" type="text" placeholder="e.g., Healthcare" />
+        </div>
+        <div class="form-group">
+          <label for="text-input">Paste text here:</label>
+          <textarea
+            id="text-input"
+            rows="10"
+            placeholder="Paste content from a paper or article..."
+          ></textarea>
+        </div>
+        <button id="summarize-text" class="primary-button">Summarize Text</button>
+      </section>
+
+      <section class="panel">
+        <div class="result-header">
+          <h2>Summary Result</h2>
+          <span id="model-name" class="badge"></span>
+        </div>
+        <div id="status-message" class="status hidden"></div>
+        <article id="summary-output" class="summary-output">
+          <p class="placeholder">
+            Choose a file or enter text to generate a summary. Results will show up here.
+          </p>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <span>API base:</span>
+      <code id="api-base-url"></code>
+    </footer>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
+
