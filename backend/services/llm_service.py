@@ -1,6 +1,6 @@
 """
 LLM Service for generating summaries
-Supports Ollama (free, local) and multiple API providers
+Supports Ollama (free, local) and Groq (fast, free tier)
 """
 
 import os
@@ -14,16 +14,12 @@ class APIProvider(str, Enum):
     """Supported API providers"""
     OLLAMA = "ollama"
     GROQ = "groq"  # Recommended: Very fast, free tier (14,400 req/day)
-    HUGGINGFACE = "huggingface"  # Free tier available
-    GEMINI = "gemini"  # Google Gemini, free tier (15 RPM, 1500 RPD)
-    OPENAI = "openai"  # Paid
-    TOGETHER = "together"  # Free credits available
 
 
 class LLMService:
     """
     Service for interacting with LLMs to generate summaries.
-    Supports multiple providers: Ollama (local), Groq (fast & free), HuggingFace, Gemini, etc.
+    Supports Ollama (local, free) and Groq (fast, free tier).
     """
     
     def __init__(self, model_name: str = "mistral", provider: str = "ollama"):
@@ -32,7 +28,7 @@ class LLMService:
         
         Args:
             model_name: Name of the model to use
-            provider: API provider - "ollama", "groq", "huggingface", "gemini", "openai", "together"
+            provider: API provider - "ollama" or "groq"
         """
         self.model_name = model_name
         self.provider = APIProvider(provider.lower())
@@ -44,26 +40,6 @@ class LLMService:
             self.api_base_url = "https://api.groq.com/openai/v1"
             if not self.api_key:
                 raise ValueError("GROQ_API_KEY environment variable not set. Get free API key at https://console.groq.com")
-        elif self.provider == APIProvider.HUGGINGFACE:
-            self.api_key = os.getenv("HUGGINGFACE_API_KEY")
-            self.api_base_url = f"https://api-inference.huggingface.co/models/{model_name}"
-            if not self.api_key:
-                raise ValueError("HUGGINGFACE_API_KEY environment variable not set. Get free token at https://huggingface.co/settings/tokens")
-        elif self.provider == APIProvider.GEMINI:
-            self.api_key = os.getenv("GEMINI_API_KEY")
-            self.api_base_url = "https://generativelanguage.googleapis.com/v1beta"
-            if not self.api_key:
-                raise ValueError("GEMINI_API_KEY environment variable not set. Get free API key at https://makersuite.google.com/app/apikey")
-        elif self.provider == APIProvider.OPENAI:
-            self.api_key = os.getenv("OPENAI_API_KEY")
-            self.api_base_url = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-            if not self.api_key:
-                raise ValueError("OPENAI_API_KEY environment variable not set")
-        elif self.provider == APIProvider.TOGETHER:
-            self.api_key = os.getenv("TOGETHER_API_KEY")
-            self.api_base_url = "https://api.together.xyz/v1"
-            if not self.api_key:
-                raise ValueError("TOGETHER_API_KEY environment variable not set. Get free credits at https://together.ai")
         else:  # OLLAMA
             self.api_key = None
             self.api_base_url = None
@@ -91,10 +67,8 @@ class LLMService:
         if chunk_size is None:
             if self.provider == APIProvider.GROQ:
                 chunk_size = 8000  # Groq is fast, can handle larger chunks
-            elif self.provider == APIProvider.GEMINI:
-                chunk_size = 10000  # Gemini has large context
             else:
-                chunk_size = 3000  # Default for others
+                chunk_size = 3000  # Default for Ollama
         
         # If text is too long, chunk it
         if len(text) > chunk_size:
@@ -170,7 +144,7 @@ class LLMService:
             try:
                 logger.info(f"Processing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)...")
                 
-                # Add delay between chunks for rate limit prevention (especially for Groq)
+                # Add delay between chunks for rate limit prevention
                 if i > 0 and self.provider == APIProvider.GROQ:
                     # Groq free tier: 6000 tokens/min = 100 tokens/sec
                     # Each chunk uses ~2000-3000 tokens, so need ~20-30 seconds between chunks
@@ -330,18 +304,12 @@ Summary:"""
     
     async def _generate_with_api(self, text: str, topic: Optional[str] = None) -> str:
         """
-        Generate summary using external API (Groq, HuggingFace, Gemini, OpenAI, Together)
+        Generate summary using Groq API
         """
-        if self.provider == APIProvider.GEMINI:
-            return await self._generate_with_gemini(text, topic)
-        elif self.provider == APIProvider.HUGGINGFACE:
-            return await self._generate_with_huggingface(text, topic)
-        else:
-            # Groq, OpenAI, Together use OpenAI-compatible API
-            return await self._generate_with_openai_compatible(text, topic)
+        return await self._generate_with_openai_compatible(text, topic)
     
     async def _generate_with_openai_compatible(self, text: str, topic: Optional[str] = None) -> str:
-        """Generate using OpenAI-compatible API (Groq, OpenAI, Together)"""
+        """Generate using Groq API (OpenAI-compatible)"""
         prompt = self._build_prompt(text, topic)
         
         headers = {
@@ -349,16 +317,11 @@ Summary:"""
             "Content-Type": "application/json"
         }
         
-        # Model mapping for different providers
-        model_map = {
-            APIProvider.GROQ: "llama-3.1-8b-instant",  # Fast and free
-            APIProvider.OPENAI: self.model_name,
-            APIProvider.TOGETHER: self.model_name,
-        }
-        api_model = model_map.get(self.provider, self.model_name)
+        # Groq model
+        api_model = "llama-3.1-8b-instant"  # Fast and free
         
         # Longer timeout for Groq since it's fast but might need time for large requests
-        timeout = 120.0 if self.provider == APIProvider.GROQ else 60.0
+        timeout = 120.0
         
         async with httpx.AsyncClient(timeout=timeout) as client:
             try:
@@ -383,128 +346,7 @@ Summary:"""
                 # Check for rate limit (429)
                 if e.response.status_code == 429:
                     raise Exception(f"Rate limit exceeded: {error_text}")
-                raise Exception(f"{self.provider.value.upper()} API error (status {e.response.status_code}): {error_text}")
-    
-    async def _generate_with_gemini(self, text: str, topic: Optional[str] = None) -> str:
-        """Generate using Google Gemini API"""
-        prompt = self._build_prompt(text, topic)
-        
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            try:
-                response = await client.post(
-                    f"{self.api_base_url}/models/gemini-pro:generateContent?key={self.api_key}",
-                    json={
-                        "contents": [{
-                            "parts": [{"text": prompt}]
-                        }],
-                        "generationConfig": {
-                            "temperature": 0.7,
-                            "maxOutputTokens": 500
-                        }
-                    }
-                )
-                response.raise_for_status()
-                result = response.json()
-                return result["candidates"][0]["content"]["parts"][0]["text"].strip()
-            except httpx.HTTPStatusError as e:
-                error_text = e.response.text if hasattr(e.response, 'text') else str(e)
-                raise Exception(f"Gemini API error: {error_text}")
-    
-    async def _generate_with_huggingface(self, text: str, topic: Optional[str] = None) -> str:
-        """Generate using Hugging Face Inference API"""
-        prompt = self._build_prompt(text, topic)
-        
-        headers = {}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            try:
-                response = await client.post(
-                    self.api_base_url,
-                    headers=headers,
-                    json={
-                        "inputs": prompt,
-                        "parameters": {
-                            "max_new_tokens": 500,
-                            "temperature": 0.7,
-                            "return_full_text": False
-                        }
-                    }
-                )
-                response.raise_for_status()
-                result = response.json()
-                
-                # Handle different response formats
-                if isinstance(result, list) and len(result) > 0:
-                    return result[0].get("generated_text", "").strip()
-                elif isinstance(result, dict):
-                    return result.get("generated_text", "").strip()
-                return str(result)
-            except httpx.HTTPStatusError as e:
-                error_text = e.response.text if hasattr(e.response, 'text') else str(e)
-                raise Exception(f"HuggingFace API error: {error_text}")
-    
-    def _build_prompt(self, text: str, topic: Optional[str] = None) -> str:
-        """Build the prompt for the LLM"""
-        topic_context = f"Topic: {topic}\n\n" if topic else ""
-        
-        prompt = f"""Please provide a concise summary of the following educational content.
-
-{topic_context}Content:
-{text}
-
-Please provide:
-1. A brief headline summary (1-2 sentences)
-2. A more detailed summary (3-5 bullet points or 2-3 paragraphs)
-
-Summary:"""
-        
-        return prompt
-
-
-# Alternative: Hugging Face Inference API (free tier available)
-class HuggingFaceLLMService:
-    """
-    Alternative LLM service using Hugging Face Inference API
-    Free tier: https://huggingface.co/inference-api
-    """
-    
-    def __init__(self, model_name: str = "mistralai/Mistral-7B-Instruct-v0.2"):
-        self.model_name = model_name
-        self.api_key = os.getenv("HUGGINGFACE_API_KEY")
-        self.api_url = f"https://api-inference.huggingface.co/models/{model_name}"
-    
-    def get_model_name(self) -> str:
-        """Get the current model name"""
-        return self.model_name
-    
-    async def generate_summary(self, text: str, topic: Optional[str] = None) -> str:
-        """Generate summary using Hugging Face Inference API"""
-        prompt = self._build_prompt(text, topic)
-        
-        headers = {}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            try:
-                response = await client.post(
-                    self.api_url,
-                    headers=headers,
-                    json={"inputs": prompt, "parameters": {"max_new_tokens": 500, "temperature": 0.7}}
-                )
-                response.raise_for_status()
-                result = response.json()
-                
-                # Handle different response formats
-                if isinstance(result, list) and len(result) > 0:
-                    return result[0].get("generated_text", "").strip()
-                elif isinstance(result, dict):
-                    return result.get("generated_text", "").strip()
-                return str(result)
-            except httpx.HTTPStatusError as e:
-                raise Exception(f"Hugging Face API error: {e.response.text}")
+                raise Exception(f"Groq API error (status {e.response.status_code}): {error_text}")
     
     def _build_prompt(self, text: str, topic: Optional[str] = None) -> str:
         """Build the prompt for the LLM"""

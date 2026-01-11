@@ -7,13 +7,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Union
-from dotenv import load_dotenv
 
 from services.llm_service import LLMService
 from services.file_reader import FileReaderService
-
-# Load environment variables from .env file
-load_dotenv()
 
 app = FastAPI(title="Topical API", version="1.0.0")
 
@@ -28,12 +24,8 @@ app.add_middleware(
 
 # Initialize services
 # Change provider to use different APIs:
-# - "ollama" (default, local, free)
-# - "groq" (recommended: very fast, free tier 14,400 req/day)
-# - "gemini" (Google, free tier: 15 RPM, 1500 RPD)
-# - "huggingface" (free tier available)
-# - "together" (free credits)
-# - "openai" (paid)
+# - "ollama"
+# - "groq" (recommended)
 
 provider = os.getenv("LLM_PROVIDER", "groq")
 llm_service = LLMService(provider=provider)
