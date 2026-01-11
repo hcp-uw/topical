@@ -7,9 +7,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Union
+from dotenv import load_dotenv
 
 from services.llm_service import LLMService
 from services.file_reader import FileReaderService
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = FastAPI(title="Topical API", version="1.0.0")
 
