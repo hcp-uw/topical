@@ -8,6 +8,7 @@
     "dev": "tsx watch src/test.ts"
   },
   "devDependencies": {
+    "@types/node": "^25.0.9",
     "dotenv": "^17.2.3",
     "tsx": "^4.21.0"
   }

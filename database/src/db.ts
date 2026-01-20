@@ -26,6 +26,17 @@ async function dbInsertTopic(title: String, authors: String, summary: String, so
     }
 }
 
+// Get specific topic by ID
+async function dbGetTopic(id: String) {
+    try {
+        let res = await sb.from("Topics").select().eq("title", id.toLowerCase());
+        console.log(res);
+        return res;
+    } catch (e) {
+        console.error(e)
+    }
+}
+
 // Get all topics from the database
 async function dbGetAll() {
     try { 
@@ -47,4 +58,4 @@ async function dbGetAuthors(authors: String) {
     return sb.from("Topics").select().eq("authors", authors.toLowerCase())
 }
 
-export {dbInsertTopic, dbGetAll, dbGetAuthors, dbGetCategory}
+export {sb, dbInsertTopic, dbGetTopic, dbGetAll, dbGetAuthors, dbGetCategory}
