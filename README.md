@@ -1,21 +1,19 @@
-# Topical - A better way to research
+# Topical - Making research accessible 
 
-Given the current state of unrelenting internet slop, we need to find a way to access accurate and meaningful knowledge.  
+## Goals
+
+Research papers are a cornerstone of science, but they are written with other experts in mind. They also often go unnoticed, getting little to no eyes on them, which is knowledge that is hidden from the public conscience. Topical aims to solve both of these problems by making research papers easily digestible and easily accessible. 
 
 ## Features
 
-### xX Discover Xx
-There will be multiple pages where there will be personalized results based on research papers published recently, and ones that have been slowly forgotten. Earlier releases of this will include papers from google scholar, JSTOR, and sources more accessible to UW students, while later releases would be more widespread.
-This will also include relevant information from reputable news sources regarding the user's shared persona.
+### Discover
+The app will allow users to scroll through research papers, or 'topics.' Each topic has an easily readable title, and when selected displays an AI generated summary of the main points of the research paper. Each topic also includes a link to the original source. 
 
-#### References
-Each article summary will come with multiple key terms represented in the article to allow the user to see the original article to use it for their work
+### Personalization
+Since no algorithm can accurately objectify a human's needs, we will allow the user to adjust their settings to get the most interesting results, including filtering the topics by category. The user will also be able to 'like' topics to show more similar content.
 
-#### Personalization
-Since no algorithm can accurately objectify a human's needs, we will allow the user to adjust their settings to bring more accurate results
+### Search
+The search page will allow users to search for specific topics based on their titles (both Topical titles and the titles of the original papers) and authors. 
 
-### Focus
-Since scrolling can be taxing when consumed in large amounts, we can allow users to focus on specific articles they have marked as relevant. 
-
-# TO BE ADDED 
-To make sure we edit this before creating a release
+### Account Features
+The app will use an account based system, which allows the app to avoid sending you the same topics multiple times. This will also be the basis of future features like likes and comments. 
