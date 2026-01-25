@@ -11,7 +11,7 @@
       <div>
         <h1>Topical Summaries</h1>
         <p class="subtitle">
-          Browse sample papers or paste your own text to generate summaries via the Topical backend.
+          Browse sample papers and generate summaries via the Topical backend.
         </p>
       </div>
       <button id="refresh-files" class="secondary-button">Refresh Files</button>
@@ -36,20 +36,38 @@
       </section>
 
       <section class="panel">
-        <h2>Summarize Custom Text</h2>
+        <h2>Fetch Articles from arXiv</h2>
+        <p class="helper-text">
+          Fetch articles from arXiv and download them to the data folder. This may take a few minutes.
+        </p>
         <div class="form-group">
-          <label for="text-topic">Topic (optional):</label>
-          <input id="text-topic" type="text" placeholder="e.g., Healthcare" />
+          <label for="article-subject">Subject Category:</label>
+          <select id="article-subject">
+            <option value="cs">Computer Science</option>
+            <option value="math">Mathematics</option>
+            <option value="physics">Physics</option>
+            <option value="astro-ph">Astrophysics</option>
+            <option value="q-bio">Quantitative Biology</option>
+            <option value="stat">Statistics</option>
+          </select>
         </div>
         <div class="form-group">
-          <label for="text-input">Paste text here:</label>
-          <textarea
-            id="text-input"
-            rows="10"
-            placeholder="Paste content from a paper or article..."
-          ></textarea>
+          <label for="max-papers">Max Papers:</label>
+          <input id="max-papers" type="number" value="10" min="1" max="50" />
         </div>
-        <button id="summarize-text" class="primary-button">Summarize Text</button>
+        <button id="fetch-articles" class="primary-button">Fetch Articles</button>
+      </section>
+
+      <section class="panel">
+        <h2>Random Article</h2>
+        <p class="helper-text">
+          Get a random article from the downloaded articles with its summary.
+        </p>
+        <div class="form-group">
+          <label for="random-topic">Topic (optional):</label>
+          <input id="random-topic" type="text" placeholder="e.g., Machine Learning" />
+        </div>
+        <button id="random-article" class="primary-button">Get Random Article</button>
       </section>
 
       <section class="panel">
@@ -60,7 +78,7 @@
         <div id="status-message" class="status hidden"></div>
         <article id="summary-output" class="summary-output">
           <p class="placeholder">
-            Choose a file or enter text to generate a summary. Results will show up here.
+            Choose a file to generate a summary. Results will show up here.
           </p>
         </article>
       </section>

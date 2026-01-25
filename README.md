@@ -1,10 +1,32 @@
 # Summary LLM
 
+### Setup
+Install dependencies: From project root run `pip install -r backend/requirements.txt` OR `cd backend` then `pip install -r requirements.txt`
+
 ### Run Backend
 Run `python backend/main.py` to start the API server on http://localhost:8000
 
 ### Run Frontend
 Run `python -m http.server 5173` from `backend/frontend/` to serve the web interface on http://localhost:5173
+
+### LLM Setup
+
+#### Ollama
+- Requires Ollama to be installed - Install from: https://ollama.ai
+- Pull a model: `ollama pull mistral:7b-instruct`
+- To change the Ollama model: Edit `backend/main.py` line 49 - Change the `model_name` parameter when initializing `LLMService`
+- Example: `llm_service = LLMService(provider=provider, model_name="llama2")`
+
+#### Groq
+- Recommended for faster responses - Get API key at: https://console.groq.com
+- Set environment variable: `GROQ_API_KEY=your_api_key_here`
+- Set provider: `LLM_PROVIDER=groq` (or edit `backend/main.py` line 49)
+- To change the Groq model: Edit `backend/services/llm_service.py` line 321 - Change the `api_model` variable
+- Example: `api_model = "mixtral-8x7b-32768"`
+
+**To change the provider:**
+- Set environment variable: `LLM_PROVIDER=groq` or `LLM_PROVIDER=ollama`
+- Or edit `backend/main.py` line 49: Change the `provider` variable
 
 ### TODO
 * Configure environment variables

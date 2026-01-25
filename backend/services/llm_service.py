@@ -229,7 +229,7 @@ Summary:"""
                         "stream": False,
                         "options": {
                             "temperature": 0.7,
-                            "num_predict": 500,
+                            "num_predict": 2000,
                         }
                     }
                 )
@@ -274,7 +274,7 @@ Summary:"""
                         "stream": False,
                         "options": {
                             "temperature": 0.7,
-                            "num_predict": 500,  # Ollama uses num_predict instead of max_tokens
+                            "num_predict": 2000
                         }
                     }
                 )
@@ -334,7 +334,7 @@ Summary:"""
                             {"role": "system", "content": "You are a helpful assistant that summarizes academic papers and educational content."},
                             {"role": "user", "content": prompt}
                         ],
-                        "max_tokens": 500,
+                        "max_tokens": 2000,
                         "temperature": 0.7
                     }
                 )
