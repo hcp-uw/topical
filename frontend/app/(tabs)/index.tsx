@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet } from "react-native";
+import { Text, View, StyleSheet, ScrollView } from "react-native";
 import Article from "@/components/Article";
 
 export default function Index() {
@@ -8,7 +8,7 @@ export default function Index() {
       {/* <Link href="/explore" style={styles.button}>
         Go to Explore screen
       </Link> */}
-      <View style={styles.mainBody}>
+      <ScrollView style={styles.mainBody}>
         <Article 
           title="Gene networks regulating adaptive cellular responses" 
           field="Biology" 
@@ -39,7 +39,7 @@ export default function Index() {
           date="11/7/2025" 
           source="ArViX" 
         />
-      </View>
+      </ScrollView>
     </View>
   );
 }
