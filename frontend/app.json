@@ -38,6 +38,47 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Satoshi-Regular.otf"
+          ],
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "Satoshi",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Satoshi-Light.ttf",
+                    "weight": 100
+                  },
+                  {
+                    "path": "./assets/fonts/Satoshi-Regular.ttf",
+                    "weight": 300
+                  },
+                  {
+                    "path": "./assets/fonts/Satoshi-Medium.ttf",
+                    "weight": 500
+                  },
+                  {
+                    "path": "./assets/fonts/Satoshi-Bold.ttf",
+                    "weight": 700
+                  },
+                  {
+                    "path": "./assets/fonts/Satoshi-Black.ttf",
+                    "weight": 900
+                  }
+                ]
+              }
+            ]
+          },
+          "ios": {
+            "fonts": ["./assets/fonts/Satoshi-Light.ttf", "./assets/fonts/Satoshi-Regular.ttf", "./assets/fonts/Satoshi-Medium.ttf", "./assets/fonts/Satoshi-Bold.ttf", "./assets/fonts/Satoshi-Black.ttf"]
+          }
+        }
       ]
     ],
     "experiments": {
