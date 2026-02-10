@@ -6,6 +6,7 @@ import os
 import sys
 import random
 import datetime
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException
@@ -41,13 +42,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-# Change provider to use different APIs:
-# - "ollama"
-# - "groq" (recommended)
-
-provider = os.getenv("LLM_PROVIDER", "groq")
-llm_service = LLMService(provider=provider)
+# Initialize services (Groq only)
+llm_service = LLMService()
 file_reader = FileReaderService()
 
 # Initialize scraper if available
@@ -97,6 +93,50 @@ class RandomArticleResponse(BaseModel):
     summary: str
     model: str
     images: Optional[List[ImageInfo]] = None
+
+
+def _extract_abstract(text: str, max_chars: int = 4000) -> str:
+    """
+    Heuristically extract the abstract section from a paper's full text.
+    Falls back to the first part of the document if no explicit abstract is found.
+    """
+    if not text:
+        return text
+
+    # Normalize newlines
+    normalized = text.replace("\r\n", "\n")
+
+    # Try to find 'Abstract' header near the beginning
+    abstract_pattern = re.compile(r"\babstract\b[:.]?\s*", re.IGNORECASE)
+    match = abstract_pattern.search(normalized)
+
+    if match and match.start() < len(normalized) * 0.3:
+        start_idx = match.end()
+    else:
+        # Fallback: start from the beginning
+        start_idx = 0
+
+    following = normalized[start_idx:]
+
+    # Look for common section headers that typically follow the abstract
+    end_pattern = re.compile(
+        r"\n\s*(?:keywords?|index terms|1\.?\s+introduction|i\.?\s+introduction)\b",
+        re.IGNORECASE,
+    )
+    end_match = end_pattern.search(following)
+
+    if end_match:
+        end_idx = start_idx + end_match.start()
+    else:
+        end_idx = min(len(normalized), start_idx + max_chars)
+
+    abstract_text = normalized[start_idx:end_idx].strip()
+
+    # If the extracted region is suspiciously short, fall back to the start of the document
+    if len(abstract_text) < 200:
+        abstract_text = normalized[:max_chars].strip()
+
+    return abstract_text
 
 
 @app.get("/")
@@ -160,8 +200,11 @@ async def summarize_file(request: FileSummaryRequest):
             if not text:
                 raise HTTPException(status_code=404, detail=f"PDF '{request.filename}' is empty or could not be read")
             
-            logger.info(f"Generating summary with {llm_service.provider.value}...")
-            summary = await llm_service.generate_summary(text, request.topic)
+            # Only summarize the abstract portion of the paper
+            abstract_text = _extract_abstract(text)
+            logger.info(f"Using abstract-only text for summary ({len(abstract_text)} characters)...")
+            
+            summary = await llm_service.generate_summary(abstract_text, request.topic)
             model_name = llm_service.get_model_name()
             logger.info(f"Summary generated: {len(summary)} characters")
             return SummaryResponse(summary=summary, model=model_name, images=images if images else [])
@@ -323,8 +366,11 @@ async def get_random_article(topic: Optional[str] = None):
             if not text:
                 raise HTTPException(status_code=404, detail=f"PDF '{filename}' is empty or could not be read")
             
-            # Generate summary
-            summary = await llm_service.generate_summary(text, topic)
+            # Generate summary using only the abstract portion of the paper
+            abstract_text = _extract_abstract(text)
+            logger.info(f"Using abstract-only text for summary ({len(abstract_text)} characters)...")
+            
+            summary = await llm_service.generate_summary(abstract_text, topic)
             model_name = llm_service.get_model_name()
             
             return RandomArticleResponse(

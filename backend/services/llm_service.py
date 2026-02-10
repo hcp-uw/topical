@@ -1,48 +1,30 @@
 """
-LLM Service for generating summaries
-Supports Ollama (free, local) and Groq (fast, free tier)
+LLM Service for generating summaries using Groq.
 """
 
 import os
 import httpx
 import asyncio
 from typing import Optional, List
-from enum import Enum
-
-
-class APIProvider(str, Enum):
-    """Supported API providers"""
-    OLLAMA = "ollama"
-    GROQ = "groq"  # Recommended: Very fast, free tier (14,400 req/day)
 
 
 class LLMService:
     """
-    Service for interacting with LLMs to generate summaries.
-    Supports Ollama (local, free) and Groq (fast, free tier).
+    Service for interacting with Groq's LLM to generate summaries.
     """
     
-    def __init__(self, model_name: str = "mistral", provider: str = "ollama"):
+    def __init__(self, model_name: str = "llama-3.1-8b-instant"):
         """
         Initialize LLM service
         
         Args:
-            model_name: Name of the model to use
-            provider: API provider - "ollama" or "groq"
+            model_name: Name of the Groq model to use
         """
         self.model_name = model_name
-        self.provider = APIProvider(provider.lower())
-        self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        
-        # Get API keys based on provider
-        if self.provider == APIProvider.GROQ:
-            self.api_key = os.getenv("GROQ_API_KEY")
-            self.api_base_url = "https://api.groq.com/openai/v1"
-            if not self.api_key:
-                raise ValueError("GROQ_API_KEY environment variable not set. Get free API key at https://console.groq.com")
-        else:  # OLLAMA
-            self.api_key = None
-            self.api_base_url = None
+        self.api_key = os.getenv("GROQ_API_KEY")
+        self.api_base_url = "https://api.groq.com/openai/v1"
+        if not self.api_key:
+            raise ValueError("GROQ_API_KEY environment variable not set. Get free API key at https://console.groq.com")
     
     def get_model_name(self) -> str:
         """Get the current model name"""
@@ -57,28 +39,22 @@ class LLMService:
             text: The text to summarize
             topic: Optional topic/subject tag for context
             chunk_size: Maximum characters per chunk. 
-                       If None, uses smart defaults based on provider.
+                       If None, uses a sensible default for Groq.
                        If text is longer, it will be chunked.
             
         Returns:
             Generated summary string
         """
-        # Smart chunk size based on provider
+        # Default chunk size for Groq
         if chunk_size is None:
-            if self.provider == APIProvider.GROQ:
-                chunk_size = 8000  # Groq is fast, can handle larger chunks
-            else:
-                chunk_size = 3000  # Default for Ollama
+            chunk_size = 8000  # Groq is fast, can handle larger chunks
         
         # If text is too long, chunk it
         if len(text) > chunk_size:
             return await self._generate_summary_chunked(text, topic, chunk_size)
         
         # Otherwise, summarize normally
-        if self.provider == APIProvider.OLLAMA:
-            return await self._generate_with_ollama(text, topic)
-        else:
-            return await self._generate_with_api(text, topic)
+        return await self._generate_with_api(text, topic)
     
     def _chunk_text(self, text: str, chunk_size: int, overlap: int = 200) -> List[str]:
         """
@@ -144,8 +120,8 @@ class LLMService:
             try:
                 logger.info(f"Processing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)...")
                 
-                # Add delay between chunks for rate limit prevention
-                if i > 0 and self.provider == APIProvider.GROQ:
+                # Add delay between chunks for rate limit prevention (Groq free tier)
+                if i > 0:
                     # Groq free tier: 6000 tokens/min = 100 tokens/sec
                     # Each chunk uses ~2000-3000 tokens, so need ~20-30 seconds between chunks
                     delay = 15.0  # 15 second delay to stay under rate limit
@@ -156,10 +132,7 @@ class LLMService:
                 max_retries = 3
                 for attempt in range(max_retries):
                     try:
-                        if self.provider == APIProvider.OLLAMA:
-                            summary = await self._generate_with_ollama(chunk, topic)
-                        else:
-                            summary = await self._generate_with_api(chunk, topic)
+                        summary = await self._generate_with_api(chunk, topic)
                         chunk_summaries.append(summary)
                         logger.info(f"Chunk {i+1} completed")
                         break  # Success, exit retry loop
@@ -186,121 +159,20 @@ class LLMService:
         # If we have multiple chunks, create a final summary of the summaries
         if len(chunks) > 1:
             # Build a special prompt for combining summaries
-            combined_text = f"Section Summaries from a longer document:\n\n{combined_summaries}\n\nPlease provide a unified summary that synthesizes all these sections."
+            combined_text = (
+                "Section Summaries from a longer document:\n\n"
+                f"{combined_summaries}\n\n"
+                "Please provide a unified summary that synthesizes all these sections."
+            )
             
             try:
-                if self.provider == APIProvider.OLLAMA:
-                    # Create a custom prompt for final summary
-                    final_prompt = self._build_combined_prompt(combined_summaries, topic)
-                    final_summary = await self._generate_with_ollama_custom(final_prompt)
-                else:
-                    final_summary = await self._generate_with_api(combined_text, topic)
+                final_summary = await self._generate_with_api(combined_text, topic)
                 return final_summary
-            except Exception as e:
+            except Exception:
                 # If final summary fails, return combined summaries
                 return f"Summary of {len(chunks)} sections:\n\n{combined_summaries}"
         
         return combined_summaries
-    
-    def _build_combined_prompt(self, combined_summaries: str, topic: Optional[str] = None) -> str:
-        """Build prompt for combining multiple section summaries"""
-        topic_context = f"Topic: {topic}\n\n" if topic else ""
-        
-        return f"""Please provide a concise, unified summary combining the following section summaries from a longer document.
-
-{topic_context}Section Summaries:
-{combined_summaries}
-
-Please provide:
-1. A brief headline summary (1-2 sentences)
-2. A more detailed summary (3-5 bullet points or 2-3 paragraphs) that synthesizes all sections
-
-Summary:"""
-    
-    async def _generate_with_ollama_custom(self, prompt: str) -> str:
-        """Generate with Ollama using a custom prompt (not built by _build_prompt)"""
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            try:
-                response = await client.post(
-                    f"{self.ollama_base_url}/api/generate",
-                    json={
-                        "model": self.model_name,
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.7,
-                            "num_predict": 2000,
-                        }
-                    }
-                )
-                response.raise_for_status()
-                result = response.json()
-                response_text = result.get("response", "").strip()
-                if not response_text:
-                    raise Exception("Ollama returned empty response.")
-                return response_text
-            except httpx.ConnectError:
-                raise Exception(
-                    f"Could not connect to Ollama at {self.ollama_base_url}. "
-                    "Make sure Ollama is running. Install from https://ollama.ai"
-                )
-            except httpx.TimeoutException:
-                raise Exception(
-                    f"Request to Ollama timed out after 300 seconds. "
-                    "The PDF may be too long or the model is too slow."
-                )
-            except httpx.HTTPStatusError as e:
-                error_text = e.response.text if hasattr(e.response, 'text') else str(e)
-                raise Exception(f"Ollama API error (status {e.response.status_code}): {error_text}")
-            except Exception as e:
-                raise Exception(f"Unexpected error during summarization: {str(e)}")
-    
-    async def _generate_with_ollama(self, text: str, topic: Optional[str] = None) -> str:
-        """
-        Generate summary using Ollama (free, local)
-        
-        Ollama must be running locally. Install from: https://ollama.ai
-        Pull the model: ollama pull mistral:7b-instruct
-        """
-        prompt = self._build_prompt(text, topic)
-        
-        async with httpx.AsyncClient(timeout=300.0) as client:  # Increased timeout for long PDFs
-            try:
-                response = await client.post(
-                    f"{self.ollama_base_url}/api/generate",
-                    json={
-                        "model": self.model_name,
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.7,
-                            "num_predict": 2000
-                        }
-                    }
-                )
-                response.raise_for_status()
-                result = response.json()
-                response_text = result.get("response", "").strip()
-                if not response_text:
-                    raise Exception("Ollama returned empty response. The model may have timed out or encountered an error.")
-                return response_text
-            except httpx.ConnectError:
-                raise Exception(
-                    f"Could not connect to Ollama at {self.ollama_base_url}. "
-                    "Make sure Ollama is running. Install from https://ollama.ai"
-                )
-            except httpx.TimeoutException:
-                raise Exception(
-                    f"Request to Ollama timed out after 300 seconds. "
-                    "The PDF may be too long or the model is too slow. "
-                    "Try a faster model or reduce the PDF size."
-                )
-            except httpx.HTTPStatusError as e:
-                error_text = e.response.text if hasattr(e.response, 'text') else str(e)
-                raise Exception(f"Ollama API error (status {e.response.status_code}): {error_text}")
-            except Exception as e:
-                # Catch any other exceptions and provide context
-                raise Exception(f"Unexpected error during summarization: {str(e)}")
     
     async def _generate_with_api(self, text: str, topic: Optional[str] = None) -> str:
         """
@@ -318,7 +190,7 @@ Summary:"""
         }
         
         # Groq model
-        api_model = "llama-3.1-8b-instant"  # Fast and free
+        api_model = self.model_name  # Fast and free model configured at initialization
         
         # Longer timeout for Groq since it's fast but might need time for large requests
         timeout = 120.0
