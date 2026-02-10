@@ -1,4 +1,5 @@
 import { StyleSheet, View, Pressable, Text } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 type Props = {
   title: string,
@@ -12,11 +13,13 @@ export default function Article({ title, field, date, source }: Props) {
     <View style={styles.articleContainer}>
       <View style={styles.titleContainer}>
         <Text style={styles.articleTitle}>{title}</Text>
-        {/* chevron here */}
+        <Ionicons name="chevron-forward-outline" size={12} color="#FFFFFF80" /> 
       </View>
       <View style={styles.infoContainer}>
-        <Text style={styles.articleField}>{field}</Text>
-        <Text style={styles.articleInfo}>{date} • {source}</Text>
+        <Pressable onPress={() => console.log(`Filter by ${field}`)} style={styles.articleField}>
+          <Text style={{color: '#A4A4A5', fontSize: 13, fontWeight: 700}}>{field}</Text>
+        </Pressable>
+        <Text style={{color: '#A4A4A5', fontSize: 13, fontWeight: 700}}>{date} • {source}</Text>
       </View>
     </View>
   );
@@ -24,8 +27,7 @@ export default function Article({ title, field, date, source }: Props) {
 
 const styles = StyleSheet.create({
   articleContainer: {
-    width: 360,
-    height: 120,
+    width: "98%",
     borderWidth: 1,
     borderColor: '#FFFFFF08',
     borderRadius: 25,
@@ -36,6 +38,7 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 36,
   },
   infoContainer: {
@@ -44,24 +47,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   articleTitle: {
-    width: 280,
+    width: "85%",
     fontSize: 16,
     fontWeight: 700,
-    color: '#fff',
+    color: '#ffffff',
   },
   articleField: {
+    backgroundColor: '#FFFFFF0D',
     borderWidth: 1,
     borderColor: '#FFFFFF1A',
     borderRadius: 40,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    fontSize: 13,
-    fontWeight: 700,
-    color: '#A4A4A5',
-  },
-  articleInfo: {
-    fontSize: 13,
-    fontWeight: 700,
-    color: '#A4A4A5',
+    paddingHorizontal: 15,
+    paddingVertical: 7,
   },
 });
