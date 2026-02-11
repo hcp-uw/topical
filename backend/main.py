@@ -42,8 +42,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services (Groq only)
-llm_service = LLMService()
+# Initialize services
+# Change provider to use different APIs:
+# - "ollama"
+# - "groq" (recommended)
+
+provider = os.getenv("LLM_PROVIDER", "groq")
+model_name = "llama-3.1-8b-instant" if provider == "groq" else "mistral"
+llm_service = LLMService(provider=provider, model_name=model_name)
 file_reader = FileReaderService()
 
 # Initialize scraper if available
@@ -203,7 +209,7 @@ async def summarize_file(request: FileSummaryRequest):
             # Only summarize the abstract portion of the paper
             abstract_text = _extract_abstract(text)
             logger.info(f"Using abstract-only text for summary ({len(abstract_text)} characters)...")
-            
+            logger.info(f"Generating summary with {llm_service.provider.value}...")
             summary = await llm_service.generate_summary(abstract_text, request.topic)
             model_name = llm_service.get_model_name()
             logger.info(f"Summary generated: {len(summary)} characters")
@@ -369,7 +375,7 @@ async def get_random_article(topic: Optional[str] = None):
             # Generate summary using only the abstract portion of the paper
             abstract_text = _extract_abstract(text)
             logger.info(f"Using abstract-only text for summary ({len(abstract_text)} characters)...")
-            
+            logger.info(f"Generating summary with {llm_service.provider.value}...")
             summary = await llm_service.generate_summary(abstract_text, topic)
             model_name = llm_service.get_model_name()
             
