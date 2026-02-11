@@ -11,6 +11,7 @@ export default function Index() {
     field: string,
     summary: string,
     date: string,
+    authors: string,
     source: string,
     sourceLink: string,
   }
@@ -22,6 +23,7 @@ export default function Index() {
       field: "🧬 Biology",
       summary: "This study explores how gene regulatory networks control cellular responses to environmental changes.",
       date: "11/7/2025",
+      authors: "John Doe",
       source: "ArViX",
       sourceLink: "https://arxiv.org/abs/1234.56789"
     },
@@ -30,6 +32,7 @@ export default function Index() {
       field: "🧪 Chemistry",
       summary: "This study presents a breakthrough in protein structure prediction using deep learning.",
       date: "11/7/2025",
+      authors: "John Doe 2",
       source: "ArViX",
       sourceLink: "https://arxiv.org/abs/1234.56789"
     },
@@ -38,6 +41,7 @@ export default function Index() {
       field: "🚀 Physics",
       summary: "This research investigates how quantum coherence affects superconducting properties.",
       date: "11/7/2025",
+      authors: "John Doe 3, John Doe 4",
       source: "ArViX",
       sourceLink: "https://arxiv.org/abs/1234.56789"
     },
@@ -46,6 +50,7 @@ export default function Index() {
       field: "🚀 Physics",
       summary: "This research investigates how quantum coherence affects superconducting properties.",
       date: "11/7/2025",
+      authors: "Gru",
       source: "ArViX",
       sourceLink: "https://arxiv.org/abs/1234.56789"
     },
@@ -54,6 +59,7 @@ export default function Index() {
       field: "🚀 Physics",
       summary: "This research investigates how quantum coherence affects superconducting properties.",
       date: "11/7/2025",
+      authors: "John Doe 5, John Doe 6, John Doe 7, John Doe 8, John Doe 9",
       source: "ArViX",
       sourceLink: "https://arxiv.org/abs/1234.56789"
     }
@@ -88,6 +94,7 @@ export default function Index() {
             title={modalArticle?.title || "Title not found."}
             summary={modalArticle?.summary || "Summary not found."}
             date={modalArticle?.date || "Date not found."}
+            authors={modalArticle?.authors || "Authors not found."}
             source={modalArticle?.source || "Source not found."}
             sourceLink={modalArticle?.sourceLink || "Link not found."}
           />

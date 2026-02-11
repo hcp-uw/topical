@@ -6,15 +6,17 @@ type Props = {
   title: string,
   summary: string,
   date: string,
+  authors: string,
   source: string,
   sourceLink: string,
 };
 
-export default function ArticleModal({ title, summary, date, source, sourceLink }: Props) {
+export default function ArticleModal({ title, summary, date, authors, source, sourceLink }: Props) {
     return (
         <ScrollView style={styles.container} contentContainerStyle={{ alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
             <Text style={{ color: 'white', fontSize: 20, fontWeight: 700 }}>{title}</Text>
             <Text style={{ color: '#FFFFFF50', fontSize: 16, fontWeight: 700 }}>{summary}</Text>
+            <Text style={{ color: '#FFFFFF50', fontSize: 16, fontWeight: 700 }}>Author(s): {authors}</Text>
             <View style={styles.infoContainer}>
                 <Pressable onPress={() => console.log("Save the article")} style={styles.saveButton}>
                     <Ionicons name="bookmark-outline" size={16} color="#FFFFFF80" /> 
