@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import "dotenv/config";
 
-const sbUrl = 'https://vgagxddospjhsebqpbqa.supabase.co';
+const sbUrl = 'https://wgsfauqeoajswlewbfjq.supabase.co';
 const sbKey = process.env.SUPABASE_KEY;
 if (sbKey === undefined) {
     throw new Error("Could not load Supabase API key from environment variables");
@@ -9,11 +9,12 @@ if (sbKey === undefined) {
 const sb = createClient(sbUrl, sbKey);
 
 // Add a new topic to the database with its title, authors, summary, source and category.
-async function dbInsertTopic(title: String, authors: String, summary: String, source_link: String, category: String) {
+async function dbInsertTopic(title: String, original_title: String, authors: String, summary: String, source_link: String, category: String) {
     try {
         let res = await sb.from("Topics").insert(
             {
                 title: title.toLowerCase(), 
+                original_title: original_title.toLowerCase(), 
                 authors: authors.toLowerCase(), 
                 summary: summary, 
                 source_link: source_link, 
