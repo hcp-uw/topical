@@ -186,7 +186,11 @@ class LLMService:
         # If we have multiple chunks, create a final summary of the summaries
         if len(chunks) > 1:
             # Build a special prompt for combining summaries
-            combined_text = f"Section Summaries from a longer document:\n\n{combined_summaries}\n\nPlease provide a unified summary that synthesizes all these sections."
+            combined_text = (
+                "Section Summaries from a longer document:\n\n"
+                f"{combined_summaries}\n\n"
+                "Please provide a unified summary that synthesizes all these sections."
+            )
             
             try:
                 if self.provider == APIProvider.OLLAMA:
@@ -196,7 +200,7 @@ class LLMService:
                 else:
                     final_summary = await self._generate_with_api(combined_text, topic)
                 return final_summary
-            except Exception as e:
+            except Exception:
                 # If final summary fails, return combined summaries
                 return f"Summary of {len(chunks)} sections:\n\n{combined_summaries}"
         
@@ -317,8 +321,8 @@ Summary:"""
             "Content-Type": "application/json"
         }
         
-        # Groq model
-        api_model = "llama-3.1-8b-instant"  # Fast and free
+        # Groq model (use configured model name)
+        api_model = self.model_name
         
         # Longer timeout for Groq since it's fast but might need time for large requests
         timeout = 120.0
@@ -364,4 +368,3 @@ Please provide:
 Summary:"""
         
         return prompt
-
