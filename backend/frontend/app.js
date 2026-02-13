@@ -153,17 +153,22 @@ async function fetchJSON(endpoint, options = {}) {
 }
 
 async function loadFiles() {
+  const dataPathEl = document.getElementById("data-path-display");
   setStatus("Loading files...", "info");
   try {
     const data = await fetchJSON("/api/list-files");
     fileSelect.innerHTML = "";
+
+    if (data.data_path && dataPathEl) {
+      dataPathEl.textContent = data.data_path;
+    }
 
     if (!data.files || data.files.length === 0) {
       fileSelect.disabled = true;
       const option = document.createElement("option");
       option.textContent = "No text files found";
       fileSelect.appendChild(option);
-      setStatus("Add .txt files to backend/data and refresh.", "warning");
+      setStatus("Add .txt, .md, or *_abstract.txt files to the data folder and refresh.", "warning");
       return;
     }
 

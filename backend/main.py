@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Union
 
@@ -19,9 +20,19 @@ from services.file_reader import FileReaderService
 
 # Add web_scraper to Python path
 backend_dir = Path(__file__).parent
+repo_root = backend_dir.parent
 scraper_path = backend_dir / "services" / "web_scraper"
 if str(scraper_path) not in sys.path:
     sys.path.insert(0, str(scraper_path))
+
+# Load database .env (SUPABASE_KEY) and add database/src for dbInsertTopic
+database_src = repo_root / "database" / "src"
+database_env = repo_root / "database" / ".env"
+if database_env.exists():
+    from dotenv import load_dotenv
+    load_dotenv(database_env)
+if str(database_src) not in sys.path:
+    sys.path.insert(0, str(database_src))
 
 # Import scraper
 try:
@@ -30,6 +41,14 @@ try:
 except ImportError:
     HTMLpull = None
     SCRAPER_AVAILABLE = False
+
+# Import database function (saves summaries to Supabase for mobile app)
+try:
+    from db import dbInsertTopic
+    DB_AVAILABLE = True
+except Exception:
+    dbInsertTopic = None
+    DB_AVAILABLE = False
 
 app = FastAPI(title="Topical API", version="1.0.0")
 
@@ -113,6 +132,33 @@ class RandomArticleResponse(BaseModel):
     summary: str
     model: str
     images: Optional[List[ImageInfo]] = None
+
+
+def _save_summary_to_db(
+    title: str,
+    original_title: str,
+    authors: str,
+    summary: str,
+    source_link: str,
+    category: str,
+    source_date: str,
+):
+    """Call dbInsertTopic from database/src/db.py to save summary for the mobile app."""
+    if not DB_AVAILABLE or dbInsertTopic is None:
+        return
+    try:
+        dbInsertTopic(
+            title=title,
+            original_title=original_title,
+            authors=authors,
+            summary=summary,
+            source_link=source_link,
+            category=category or "Uncategorized",
+            source_date=source_date,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger("uvicorn").warning(f"Could not save summary to database: {e}")
 
 
 def _extract_abstract(text: str, max_chars: int = 4000) -> str:
@@ -255,10 +301,11 @@ async def summarize_file(request: FileSummaryRequest):
 
 @app.get("/api/list-files")
 async def list_files():
-    """List all available text and PDF files in the data directory"""
+    """List all available text and PDF files in the data directory (backend/data)"""
     try:
         files = file_reader.list_files()
-        return {"files": files}
+        data_path = str(file_reader.get_data_dir_path())
+        return {"files": files, "data_path": data_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error listing files: {str(e)}")
 
@@ -305,7 +352,9 @@ async def fetch_and_summarize_url(request: FetchUrlRequest):
             scraped = await loop.run_in_executor(executor, _scrape)
 
         title = scraped.get("title") or url
+        authors = scraped.get("authors") or "Unknown"
         text = (scraped.get("abstract") or "").strip()
+        logger.info(f"Scraped authors: {authors!r}")
         if not text:
             raise HTTPException(
                 status_code=422,
@@ -315,6 +364,18 @@ async def fetch_and_summarize_url(request: FetchUrlRequest):
         logger.info(f"Generating summary from arXiv abstract ({url}, {len(text)} chars)...")
         summary = await llm_service.generate_summary(text, request.topic)
         model_name = llm_service.get_model_name()
+
+        source_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        _save_summary_to_db(
+            title=title,
+            original_title=title,
+            authors=authors,
+            summary=summary,
+            source_link=url,
+            category=request.topic or "Uncategorized",
+            source_date=source_date,
+        )
+        logger.info(f"Saved to DB with authors: {authors!r}")
 
         return FetchUrlResponse(title=title, url=url, summary=summary, model=model_name)
     except HTTPException:
@@ -365,15 +426,31 @@ async def fetch_articles(request: FetchArticlesRequest):
             "files": files,
         }
         if request.summarize_after_fetch and result:
-            # Summarize all fetched abstracts in parallel
+            # Summarize all fetched abstracts in parallel and save to DB
+            subject = request.subject
+            source_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
             async def summarize_one(item):
                 fn = item["filename"]
                 try:
                     text = file_reader.read_file(fn)
                     summary = await llm_service.generate_summary(text, None)
+                    title = item.get("title") or fn
+                    authors = item.get("authors") or "Unknown"
+                    source_link = item.get("source_link") or ""
+                    _save_summary_to_db(
+                        title=title,
+                        original_title=title,
+                        authors=authors,
+                        summary=summary,
+                        source_link=source_link,
+                        category=subject or "Uncategorized",
+                        source_date=source_date,
+                    )
+                    logger.info(f"Saved to DB: title={title!r}, authors={authors!r}")
                     return ArticleSummaryItem(
                         filename=fn,
-                        title=item.get("title") or fn,
+                        title=title,
                         summary=summary,
                         model=llm_service.get_model_name(),
                     )
@@ -383,6 +460,18 @@ async def fetch_articles(request: FetchArticlesRequest):
 
             summaries = await asyncio.gather(*[summarize_one(r) for r in result])
             out["summaries"] = [s for s in summaries if s is not None]
+            # Delete the abstract .txt files after summarizing and saving to DB
+            data_dir_path = file_reader.get_data_dir_path()
+            for r in result:
+                fn = r.get("filename")
+                if fn:
+                    path = data_dir_path / fn
+                    try:
+                        if path.exists() and path.is_file():
+                            path.unlink()
+                            logger.info(f"Deleted {fn}")
+                    except OSError as e:
+                        logger.warning(f"Could not delete {fn}: {e}")
         return out
     except Exception as e:
         logger.error(f"Error fetching articles: {str(e)}")
@@ -469,6 +558,11 @@ async def get_random_article(topic: Optional[str] = None):
         logger.error(f"Error getting random article: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting random article: {str(e)}")
 
+
+# Serve frontend from backend/frontend so the correct UI is always used
+frontend_dir = backend_dir / "frontend"
+if frontend_dir.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn

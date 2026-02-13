@@ -12,7 +12,8 @@ if sbKey is None:
 
 sb: Client = create_client(sbUrl, sbKey)
 
-def dbInsertTopic(title: str, original_title: str, authors: str, summary: str, source_link: str, category: str):
+def dbInsertTopic(title: str, original_title: str, authors: str, summary: str,
+                   source_link: str, category: str, source_date : str):
     try:
         res = sb.table("Topics").insert({
             "title": title.lower(), 
@@ -20,7 +21,8 @@ def dbInsertTopic(title: str, original_title: str, authors: str, summary: str, s
             "authors": authors.lower(), 
             "summary": summary, 
             "source_link": source_link, 
-            "category": category.lower()
+            "category": category.lower(),
+            "source_date": source_date
         }).execute()
         print(res)
     except Exception as e:
