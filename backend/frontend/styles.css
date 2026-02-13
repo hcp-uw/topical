@@ -63,6 +63,50 @@ main {
   margin-top: 0;
 }
 
+/* Fetch from arXiv tabs – only one panel visible at a time */
+.fetch-arxiv-panel .tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.fetch-arxiv-panel .tab {
+  padding: 0.65rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.fetch-arxiv-panel .tab:hover {
+  color: var(--text);
+}
+
+.fetch-arxiv-panel .tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: rgba(75, 123, 236, 0.1);
+}
+
+.fetch-arxiv-panel .tab-content {
+  padding-top: 1.25rem;
+}
+
+.fetch-arxiv-panel .tab-panel {
+  display: none !important;
+}
+
+.fetch-arxiv-panel .tab-panel.active {
+  display: block !important;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -148,6 +192,24 @@ textarea {
 
 .summary-output p {
   margin-top: 0;
+}
+
+.bulk-summary-item {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.bulk-summary-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.article-filename {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
 }
 
 .placeholder {

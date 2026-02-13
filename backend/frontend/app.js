@@ -9,12 +9,30 @@ const statusMessage = document.getElementById("status-message");
 const modelNameBadge = document.getElementById("model-name");
 const apiBaseUrlLabel = document.getElementById("api-base-url");
 const fetchArticlesBtn = document.getElementById("fetch-articles");
+const fetchAndSummarizeUrlBtn = document.getElementById("fetch-and-summarize-url");
 const randomArticleBtn = document.getElementById("random-article");
 const articleSubjectSelect = document.getElementById("article-subject");
 const maxPapersInput = document.getElementById("max-papers");
+const articleUrlInput = document.getElementById("article-url");
+const urlTopicInput = document.getElementById("url-topic");
+const bulkTopicInput = document.getElementById("bulk-topic");
 const randomTopicInput = document.getElementById("random-topic");
+const tabSingle = document.getElementById("tab-single");
+const tabMultiple = document.getElementById("tab-multiple");
+const panelSingle = document.getElementById("panel-single");
+const panelMultiple = document.getElementById("panel-multiple");
 
 apiBaseUrlLabel.textContent = API_BASE_URL;
+
+function switchFetchTab(toMultiple) {
+  const isMultiple = toMultiple === true;
+  tabSingle.classList.toggle("active", !isMultiple);
+  tabMultiple.classList.toggle("active", isMultiple);
+  tabSingle.setAttribute("aria-selected", !isMultiple ? "true" : "false");
+  tabMultiple.setAttribute("aria-selected", isMultiple ? "true" : "false");
+  panelSingle.classList.toggle("active", !isMultiple);
+  panelMultiple.classList.toggle("active", isMultiple);
+}
 
 function setStatus(message, type = "info") {
   statusMessage.textContent = message;
@@ -74,6 +92,33 @@ function renderSummaryWithImages(summary, model, images) {
   
   summaryOutput.innerHTML = html;
   modelNameBadge.textContent = model ? `Model: ${model}` : "";
+}
+
+function renderBulkSummaries(summaries) {
+  if (!summaries || summaries.length === 0) {
+    showPlaceholder();
+    return;
+  }
+  const model = summaries[0] && summaries[0].model ? summaries[0].model : "";
+  modelNameBadge.textContent = model ? `Model: ${model}` : "";
+  const html = summaries
+    .map((s) => {
+      const summaryHtml = (s.summary || "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => `<p>${line}</p>`)
+        .join("");
+      return `<div class="bulk-summary-item"><div class="article-header"><h3>${escapeHtml(s.title || s.filename)}</h3><p class="article-filename">${escapeHtml(s.filename)}</p></div>${summaryHtml}</div>`;
+    })
+    .join("");
+  summaryOutput.innerHTML = html;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 async function fetchJSON(endpoint, options = {}) {
@@ -203,59 +248,121 @@ async function handleFileSummary() {
 
 async function handleFetchArticles() {
   const subject = articleSubjectSelect.value;
-  const maxPapers = parseInt(maxPapersInput.value) || 10;
-  
-  // Disable button during processing
+  const maxPapers = parseInt(maxPapersInput.value, 10) || 10;
+
   fetchArticlesBtn.disabled = true;
   fetchArticlesBtn.textContent = "Fetching...";
-  
-  setStatus(`Fetching ${maxPapers} articles from arXiv (${subject})... This may take several minutes.`, "info");
+  setStatus(`Fetching ${maxPapers} arXiv abstracts (${subject}), then summarizing all in parallel... This may take a few minutes.`, "info");
   statusMessage.classList.remove("hidden");
-  
+
+  const timeout = 600000; // 10 minutes
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
   try {
-    // Use longer timeout for article fetching (10 minutes)
-    const timeout = 600000; // 10 minutes
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
     const response = await fetch(`${API_BASE_URL}/api/fetch-articles`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        subject: subject,
+        subject,
         max_papers: maxPapers,
-        download_pdfs: true
+        summarize_after_fetch: true,
       }),
     });
-    
     clearTimeout(timeoutId);
-    
     if (!response.ok) {
       const error = await response.json().catch(() => null);
       throw new Error(error?.detail || response.statusText);
     }
-    
     const result = await response.json();
-    
-    setStatus(
-      `Successfully fetched ${result.downloaded || result.total_found} articles!`, 
-      "success"
-    );
-    
-    // Refresh file list
+    const count = result.total_fetched || 0;
+    const summaries = result.summaries || [];
+    if (summaries.length > 0) {
+      setStatus(`Fetched and summarized ${summaries.length} articles.`, "success");
+      renderBulkSummaries(summaries);
+    } else if (count > 0) {
+      setStatus(`Fetched ${count} abstracts, but summarization did not run or failed. Check that the LLM (Ollama or Groq) is running.`, "warning");
+      summaryOutput.innerHTML = `<p class="placeholder">${count} abstract file(s) were saved. Use "Summarize a Local File" or "Get Random Article" to summarize them.</p>`;
+    } else {
+      setStatus(`No new abstracts fetched.`, "info");
+      await loadFiles();
+    }
     await loadFiles();
-    
   } catch (error) {
-    if (error.name === 'AbortError') {
-      setStatus('Request timed out. The scraping may still be running on the server.', "warning");
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      setStatus("Request timed out.", "warning");
     } else {
       setStatus(`Error: ${error.message}`, "error");
     }
     console.error("Fetch articles error:", error);
   } finally {
     fetchArticlesBtn.disabled = false;
-    fetchArticlesBtn.textContent = "Fetch Articles";
+    fetchArticlesBtn.textContent = "Fetch & Summarize";
+  }
+}
+
+async function handleFetchAndSummarizeUrl() {
+  const url = articleUrlInput.value.trim();
+  const topic = urlTopicInput.value.trim() || null;
+
+  if (!url) {
+    setStatus("Please enter an article URL.", "warning");
+    statusMessage.classList.remove("hidden");
+    return;
+  }
+
+  fetchAndSummarizeUrlBtn.disabled = true;
+  fetchAndSummarizeUrlBtn.textContent = "Fetching...";
+
+  setStatus("Fetching article and generating summary...", "info");
+  statusMessage.classList.remove("hidden");
+
+  const timeout = 300000; // 5 minutes
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/fetch-and-summarize-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({ url, topic }),
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || response.statusText);
+    }
+
+    const result = await response.json();
+
+    let summaryHtml = result.summary
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => `<p>${line}</p>`)
+      .join("");
+    let html = `<div class="article-header"><h3>${result.title}</h3><p class="article-url"><a href="${result.url}" target="_blank" rel="noopener">${result.url}</a></p></div>${summaryHtml}`;
+
+    summaryOutput.innerHTML = html;
+    modelNameBadge.textContent = result.model ? `Model: ${result.model}` : "";
+    setStatus("Article fetched and summarized.", "success");
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      setStatus("Request timed out. Try a shorter page or try again.", "error");
+    } else {
+      setStatus(`Error: ${error.message}`, "error");
+    }
+    showPlaceholder();
+    console.error("Fetch and summarize error:", error);
+  } finally {
+    fetchAndSummarizeUrlBtn.disabled = false;
+    fetchAndSummarizeUrlBtn.textContent = "Fetch & Summarize";
   }
 }
 
@@ -344,10 +451,14 @@ async function handleRandomArticle() {
 refreshFilesBtn.addEventListener("click", loadFiles);
 summarizeFileBtn.addEventListener("click", handleFileSummary);
 fetchArticlesBtn.addEventListener("click", handleFetchArticles);
+fetchAndSummarizeUrlBtn.addEventListener("click", handleFetchAndSummarizeUrl);
 randomArticleBtn.addEventListener("click", handleRandomArticle);
 
 window.addEventListener("DOMContentLoaded", () => {
   loadFiles();
   showPlaceholder();
+  switchFetchTab(false);
+  if (tabSingle) tabSingle.addEventListener("click", () => switchFetchTab(false));
+  if (tabMultiple) tabMultiple.addEventListener("click", () => switchFetchTab(true));
 });
 

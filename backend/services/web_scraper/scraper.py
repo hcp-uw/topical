@@ -1,6 +1,4 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
+import re
 import time
 import os
 import requests
@@ -258,7 +256,7 @@ from bs4 import BeautifulSoup
 #         # Clean up
 #         scraper.quit_driver()
 
-// ...existing code...
+#// ...existing code...
 
 class HTMLpull:
     def __init__(self):
@@ -321,6 +319,124 @@ class HTMLpull:
             'headings': [h.get_text(strip=True) for h in soup.find_all(['h1', 'h2', 'h3'])]
         }
         
+        return result
+
+    def scrape_arxiv_abstract(self, url):
+        """
+        Scrape an arXiv abstract page (e.g. https://arxiv.org/abs/XXXX.XXXXX)
+        and return only the title and abstract section.
+        """
+        response = self.session.get(url, timeout=30)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        title = soup.title.string if soup.title else ''
+        # arXiv puts the abstract in a blockquote; fallback to meta description or first blockquote
+        abstract = ''
+        blockquote = soup.find('blockquote')
+        if blockquote:
+            abstract = blockquote.get_text(separator=' ', strip=True)
+        if not abstract:
+            meta = soup.find('meta', attrs={'name': 'citation_abstract'})
+            if meta and meta.get('content'):
+                abstract = meta.get('content', '')
+        if not abstract:
+            # Fallback: find element containing "Abstract" and take following text
+            for elem in soup.find_all(['p', 'div', 'span']):
+                text = elem.get_text(strip=True)
+                if text.startswith('Abstract') and len(text) > 20:
+                    abstract = text.replace('Abstract:', '').replace('Abstract', '', 1).strip()
+                    break
+        return {
+            'url': url,
+            'title': title,
+            'abstract': abstract.strip() if abstract else '',
+        }
+
+    def get_abstract_links_from_list_page(self, list_url):
+        """
+        Fetch an arXiv list page (e.g. /list/cs/recent or /list/cs/2024-01) and
+        return a list of (arxiv_id, abs_url) for each paper's abstract page.
+        """
+        response = self.session.get(list_url, timeout=30)
+        if response.status_code == 400 and "?" in list_url:
+            # Some arXiv endpoints reject certain query params; try without
+            list_url = list_url.split("?")[0]
+            response = self.session.get(list_url, timeout=30)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = []
+        # arXiv list pages: links with title="Abstract" point to /abs/XXXX.YYYY
+        for a in soup.find_all('a', href=True):
+            if a.get('title') == 'Abstract':
+                href = a['href']
+                if '/abs/' in href:
+                    # href can be /abs/2401.00001 or full url
+                    arxiv_id = href.split('/abs/')[-1].split('?')[0].strip('/')
+                    # allow e.g. 2401.00001 or 2401.00001v1
+                    if arxiv_id and re.match(r'^[\d.]+\w*$', arxiv_id):
+                        abs_url = f"https://arxiv.org/abs/{arxiv_id}" if not href.startswith('http') else href.split('?')[0]
+                        links.append((arxiv_id, abs_url))
+        # Deduplicate by arxiv_id while preserving order
+        seen = set()
+        unique = []
+        for aid, url in links:
+            if aid not in seen:
+                seen.add(aid)
+                unique.append((aid, url))
+        return unique
+
+    def fetch_arxiv_abstracts_bulk(self, subject, year, month, max_papers, data_dir, delay=0.5):
+        """
+        Fetch abstracts from arXiv list pages (no PDFs). For each paper, fetch the
+        abstract page HTML, extract the abstract text, and save to data_dir as
+        {arxiv_id}_abstract.txt. Returns list of saved filenames and metadata.
+        If year/month are None, uses the 'recent' list for the subject.
+        """
+        os.makedirs(data_dir, exist_ok=True)
+        # arXiv accepts show=25, 50, 100, or 2000 (show=200 returns 400)
+        show = 50
+        skip = 0
+        all_ids_urls = []
+        if year is not None and month is not None:
+            base_url = f"https://arxiv.org/list/{subject}/{year:04d}-{month:02d}"
+        else:
+            base_url = f"https://arxiv.org/list/{subject}/recent"
+        while len(all_ids_urls) < max_papers:
+            list_url = f"{base_url}?skip={skip}&show={show}"
+            try:
+                batch = self.get_abstract_links_from_list_page(list_url)
+            except Exception as e:
+                raise RuntimeError(f"Failed to fetch list page {list_url}: {e}") from e
+            if not batch:
+                break
+            for aid, abs_url in batch:
+                if len(all_ids_urls) >= max_papers:
+                    break
+                all_ids_urls.append((aid, abs_url))
+            if len(batch) < show:
+                break
+            skip += show
+            time.sleep(delay)
+        result = []
+        for i, (arxiv_id, abs_url) in enumerate(all_ids_urls):
+            try:
+                data = self.scrape_arxiv_abstract(abs_url)
+                title = data.get('title') or arxiv_id
+                abstract = (data.get('abstract') or '').strip()
+                if not abstract:
+                    continue
+                # Save as {arxiv_id}_abstract.txt (safe filename: no slashes)
+                safe_id = arxiv_id.replace('/', '_')
+                filename = f"{safe_id}_abstract.txt"
+                filepath = os.path.join(data_dir, filename)
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(f"Title: {title}\n\nAbstract:\n{abstract}\n")
+                result.append({"id": arxiv_id, "title": title, "filename": filename})
+            except Exception as e:
+                continue  # skip failed papers
+            if delay > 0:
+                time.sleep(delay)
         return result
 
 

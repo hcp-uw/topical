@@ -35,27 +35,64 @@
         <button id="summarize-file" class="primary-button">Summarize File</button>
       </section>
 
-      <section class="panel">
-        <h2>Fetch Articles from arXiv</h2>
-        <p class="helper-text">
-          Fetch articles from arXiv and download them to the data folder. This may take a few minutes.
-        </p>
-        <div class="form-group">
-          <label for="article-subject">Subject Category:</label>
-          <select id="article-subject">
-            <option value="cs">Computer Science</option>
-            <option value="math">Mathematics</option>
-            <option value="physics">Physics</option>
-            <option value="astro-ph">Astrophysics</option>
-            <option value="q-bio">Quantitative Biology</option>
-            <option value="stat">Statistics</option>
-          </select>
+      <section class="panel fetch-arxiv-panel">
+        <h2>Fetch from arXiv</h2>
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" id="tab-single" role="tab" aria-selected="true">Single article</button>
+          <button type="button" class="tab" id="tab-multiple" role="tab" aria-selected="false">Multiple articles</button>
         </div>
-        <div class="form-group">
-          <label for="max-papers">Max Papers:</label>
-          <input id="max-papers" type="number" value="10" min="1" max="50" />
+        <div class="tab-content">
+        <div id="panel-single" class="tab-panel active" role="tabpanel">
+          <p class="helper-text">
+            Enter an arXiv abstract URL to fetch the abstract and get a summary in one click.
+          </p>
+          <div class="form-group">
+            <label for="article-url">arXiv abstract URL:</label>
+            <input id="article-url" type="url" placeholder="https://arxiv.org/abs/2401.00001" />
+          </div>
+          <div class="form-group">
+            <label for="url-topic">Topic:</label>
+            <select id="url-topic">
+              <option value="">No specific topic</option>
+              <option value="Physics">Physics</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="Computer Science">Computer Science</option>
+            </select>
+          </div>
+          <button id="fetch-and-summarize-url" class="primary-button">Fetch & Summarize</button>
         </div>
-        <button id="fetch-articles" class="primary-button">Fetch Articles</button>
+
+        <div id="panel-multiple" class="tab-panel" role="tabpanel">
+          <p class="helper-text">
+            Fetch multiple article abstracts from arXiv (no PDFs). You get one summary per article—e.g. 10 articles → 10 summaries, all at once.
+          </p>
+          <div class="form-group">
+            <label for="article-subject">Subject:</label>
+            <select id="article-subject">
+              <option value="cs">Computer Science</option>
+              <option value="math">Mathematics</option>
+              <option value="physics">Physics</option>
+              <option value="astro-ph">Astrophysics</option>
+              <option value="q-bio">Quantitative Biology</option>
+              <option value="stat">Statistics</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="max-papers">Max papers:</label>
+            <input id="max-papers" type="number" value="10" min="1" max="50" />
+          </div>
+          <div class="form-group">
+            <label for="bulk-topic">Topic:</label>
+            <select id="bulk-topic">
+              <option value="">No specific topic</option>
+              <option value="Physics">Physics</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="Computer Science">Computer Science</option>
+            </select>
+          </div>
+          <button id="fetch-articles" class="primary-button">Fetch & Summarize</button>
+        </div>
+        </div>
       </section>
 
       <section class="panel">

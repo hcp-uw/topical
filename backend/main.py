@@ -25,10 +25,10 @@ if str(scraper_path) not in sys.path:
 
 # Import scraper
 try:
-    from scraper import ArxivScraper
+    from scraper import HTMLpull
     SCRAPER_AVAILABLE = True
 except ImportError:
-    ArxivScraper = None
+    HTMLpull = None
     SCRAPER_AVAILABLE = False
 
 app = FastAPI(title="Topical API", version="1.0.0")
@@ -53,15 +53,9 @@ llm_service = LLMService(provider=provider, model_name=model_name)
 file_reader = FileReaderService()
 
 # Initialize scraper if available
-scraper = None
+html_scraper = None
 if SCRAPER_AVAILABLE:
-    scraper = ArxivScraper()
-    # Set geckodriver path
-    geckodriver_path = scraper_path / "geckodriver.exe"
-    if geckodriver_path.exists():
-        current_path = os.environ.get("PATH", "")
-        if str(scraper_path) not in current_path:
-            os.environ["PATH"] = str(scraper_path) + os.pathsep + current_path
+    html_scraper = HTMLpull()
 
 
 class SummaryRequest(BaseModel):
@@ -92,6 +86,26 @@ class FetchArticlesRequest(BaseModel):
     month: Optional[int] = None
     max_papers: int = 10
     download_pdfs: bool = True
+    summarize_after_fetch: bool = False  # If True, summarize all fetched abstracts in parallel
+
+
+class ArticleSummaryItem(BaseModel):
+    filename: str
+    title: str
+    summary: str
+    model: str
+
+
+class FetchUrlRequest(BaseModel):
+    url: str
+    topic: Optional[str] = None
+
+
+class FetchUrlResponse(BaseModel):
+    title: str
+    url: str
+    summary: str
+    model: str
 
 
 class RandomArticleResponse(BaseModel):
@@ -249,81 +263,128 @@ async def list_files():
         raise HTTPException(status_code=500, detail=f"Error listing files: {str(e)}")
 
 
-@app.post("/api/fetch-articles")
-async def fetch_articles(request: FetchArticlesRequest):
+@app.post("/api/fetch-and-summarize-url", response_model=FetchUrlResponse)
+async def fetch_and_summarize_url(request: FetchUrlRequest):
     """
-    Fetch articles from arXiv using the web scraper and optionally download PDFs.
-    This may take several minutes depending on max_papers.
+    Fetch a single article by URL, then generate a summary.
+    One call = fetch + summary.
     """
     import logging
     logger = logging.getLogger("uvicorn")
-    
-    if not SCRAPER_AVAILABLE or not scraper:
+
+    if not SCRAPER_AVAILABLE or not html_scraper:
         raise HTTPException(
             status_code=500,
-            detail="Scraper not available. Make sure selenium is installed: pip install -r requirements.txt"
+            detail="Scraper not available. Install dependencies: pip install -r requirements.txt (requests, beautifulsoup4)"
         )
-    
+
+    url = (request.url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    # Only arXiv abstract pages are supported; we use the abstract section only
+    parsed = urlparse(url)
+    if "arxiv.org" not in parsed.netloc or "/abs/" not in parsed.path:
+        raise HTTPException(
+            status_code=400,
+            detail="Only arXiv article URLs are supported (e.g. https://arxiv.org/abs/2401.00001)"
+        )
+
     try:
-        # Set year/month defaults
-        year = request.year if request.year else datetime.datetime.now().year
-        month = request.month if request.month else datetime.datetime.now().month
-        
-        logger.info(f"Fetching articles: subject={request.subject}, year={year}, month={month}, max_papers={request.max_papers}")
-        
-        # Run scraper (this is synchronous, so we run it in a thread pool)
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
-        
-        def _fetch_articles():
-            # Initialize driver if needed
-            if scraper.driver is None:
-                scraper.init_driver()
-            
-            # Scrape PDF links (pass max_papers to stop early)
-            pdf_links = scraper.scrape_monthly_arxiv(request.subject, year, month, max_papers=request.max_papers)
-            
-            downloaded_files = []
-            
-            if request.download_pdfs and pdf_links:
-                # Download PDFs to data directory
-                data_dir = str(file_reader.get_data_dir_path())
-                successful, failed = scraper.download_all_pdfs(pdf_links, data_dir, delay=1)
-                
-                # Get list of downloaded filenames
-                for link in pdf_links:
-                    parsed_url = urlparse(link)
-                    filename = os.path.basename(parsed_url.path)
-                    if not filename.endswith('.pdf'):
-                        filename += '.pdf'
-                    filepath = file_reader.get_data_dir_path() / filename
-                    if filepath.exists():
-                        downloaded_files.append(filename)
-            
-            # Clean up driver
-            scraper.quit_driver()
-            
-            return {
-                "status": "success",
-                "total_found": len(pdf_links),
-                "downloaded": len(downloaded_files),
-                "files": downloaded_files,
-                "links": pdf_links[:10]  # Return first 10 links as sample
-            }
-        
+
+        def _scrape():
+            return html_scraper.scrape_arxiv_abstract(url)
+
         loop = asyncio.get_event_loop()
         with ThreadPoolExecutor() as executor:
-            result = await loop.run_in_executor(executor, _fetch_articles)
-        
-        return result
-        
+            scraped = await loop.run_in_executor(executor, _scrape)
+
+        title = scraped.get("title") or url
+        text = (scraped.get("abstract") or "").strip()
+        if not text:
+            raise HTTPException(
+                status_code=422,
+                detail="Could not extract the abstract from this arXiv page."
+            )
+
+        logger.info(f"Generating summary from arXiv abstract ({url}, {len(text)} chars)...")
+        summary = await llm_service.generate_summary(text, request.topic)
+        model_name = llm_service.get_model_name()
+
+        return FetchUrlResponse(title=title, url=url, summary=summary, model=model_name)
+    except HTTPException:
+        raise
     except Exception as e:
-        # Make sure to clean up driver on error
-        if scraper and scraper.driver:
-            try:
-                scraper.quit_driver()
-            except:
-                pass
+        logger.error(f"Error fetching/summarizing URL: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@app.post("/api/fetch-articles")
+async def fetch_articles(request: FetchArticlesRequest):
+    """
+    Fetch arXiv abstracts only (no PDFs): scrape list pages for abstract links,
+    fetch each abstract page, extract the abstract text, and save as .txt files
+    in the data directory. Summarize-file and random-article can then use those files.
+    """
+    import logging
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+
+    logger = logging.getLogger("uvicorn")
+    if not SCRAPER_AVAILABLE or not html_scraper:
+        raise HTTPException(
+            status_code=500,
+            detail="Scraper not available. Install dependencies: pip install -r requirements.txt (requests, beautifulsoup4)"
+        )
+    # Use year/month only if explicitly provided; otherwise use "recent" list to avoid 400 for future/invalid months
+    year = request.year
+    month = request.month
+    data_dir = str(file_reader.get_data_dir_path())
+    try:
+        def _fetch():
+            return html_scraper.fetch_arxiv_abstracts_bulk(
+                subject=request.subject,
+                year=year,
+                month=month,
+                max_papers=request.max_papers,
+                data_dir=data_dir,
+                delay=0.5,
+            )
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            result = await loop.run_in_executor(executor, _fetch)
+        files = [r["filename"] for r in result]
+        out = {
+            "status": "success",
+            "total_fetched": len(result),
+            "files": files,
+        }
+        if request.summarize_after_fetch and result:
+            # Summarize all fetched abstracts in parallel
+            async def summarize_one(item):
+                fn = item["filename"]
+                try:
+                    text = file_reader.read_file(fn)
+                    summary = await llm_service.generate_summary(text, None)
+                    return ArticleSummaryItem(
+                        filename=fn,
+                        title=item.get("title") or fn,
+                        summary=summary,
+                        model=llm_service.get_model_name(),
+                    )
+                except Exception as e:
+                    logger.warning(f"Summarize failed for {fn}: {e}")
+                    return None
+
+            summaries = await asyncio.gather(*[summarize_one(r) for r in result])
+            out["summaries"] = [s for s in summaries if s is not None]
+        return out
+    except Exception as e:
         logger.error(f"Error fetching articles: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching articles: {str(e)}")
 
@@ -338,18 +399,17 @@ async def get_random_article(topic: Optional[str] = None):
     logger = logging.getLogger("uvicorn")
     
     try:
-        # Get random article filename from data directory
+        # Get random article: PDFs or abstract .txt files saved by fetch-articles
         data_dir = file_reader.get_data_dir_path()
         pdf_files = list(data_dir.glob("*.pdf"))
-        
-        if not pdf_files:
+        abstract_txt = list(data_dir.glob("*_abstract.txt"))
+        article_files = pdf_files + abstract_txt
+        if not article_files:
             raise HTTPException(
                 status_code=404,
                 detail="No articles found. Please fetch articles first using /api/fetch-articles"
             )
-        
-        # Pick a random file
-        random_file = random.choice(pdf_files)
+        random_file = random.choice(article_files)
         filename = random_file.name
         
         
