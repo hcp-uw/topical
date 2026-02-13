@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Topical Summaries</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Topical Summaries</h1>
+        <p class="subtitle">
+          Browse sample papers and generate summaries via the Topical backend.
+        </p>
+      </div>
+      <button id="refresh-files" class="secondary-button">Refresh Files</button>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Summarize a Local File</h2>
+        <p class="helper-text">
+          Files are read from <code>backend/data</code>. Add more <code>.txt</code> or <code>.md</code> files,
+          then click refresh.
+        </p>
+        <div class="form-group">
+          <label for="file-select">Choose a file:</label>
+          <select id="file-select"></select>
+        </div>
+        <div class="form-group">
+          <label for="file-topic">Topic (optional):</label>
+          <input id="file-topic" type="text" placeholder="e.g., Machine Learning" />
+        </div>
+        <button id="summarize-file" class="primary-button">Summarize File</button>
+      </section>
+
+      <section class="panel fetch-arxiv-panel">
+        <h2>Fetch from arXiv</h2>
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" id="tab-single" role="tab" aria-selected="true">Single article</button>
+          <button type="button" class="tab" id="tab-multiple" role="tab" aria-selected="false">Multiple articles</button>
+        </div>
+        <div class="tab-content">
+        <div id="panel-single" class="tab-panel active" role="tabpanel">
+          <p class="helper-text">
+            Enter an arXiv abstract URL to fetch the abstract and get a summary in one click.
+          </p>
+          <div class="form-group">
+            <label for="article-url">arXiv abstract URL:</label>
+            <input id="article-url" type="url" placeholder="https://arxiv.org/abs/2401.00001" />
+          </div>
+          <div class="form-group">
+            <label for="url-topic">Topic:</label>
+            <select id="url-topic">
+              <option value="">No specific topic</option>
+              <option value="Physics">Physics</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="Computer Science">Computer Science</option>
+            </select>
+          </div>
+          <button id="fetch-and-summarize-url" class="primary-button">Fetch & Summarize</button>
+        </div>
+
+        <div id="panel-multiple" class="tab-panel" role="tabpanel">
+          <p class="helper-text">
+            Fetch multiple article abstracts from arXiv (no PDFs). You get one summary per article—e.g. 10 articles → 10 summaries, all at once.
+          </p>
+          <div class="form-group">
+            <label for="article-subject">Subject:</label>
+            <select id="article-subject">
+              <option value="cs">Computer Science</option>
+              <option value="math">Mathematics</option>
+              <option value="physics">Physics</option>
+              <option value="astro-ph">Astrophysics</option>
+              <option value="q-bio">Quantitative Biology</option>
+              <option value="stat">Statistics</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="max-papers">Max papers:</label>
+            <input id="max-papers" type="number" value="10" min="1" max="50" />
+          </div>
+          <div class="form-group">
+            <label for="bulk-topic">Topic:</label>
+            <select id="bulk-topic">
+              <option value="">No specific topic</option>
+              <option value="Physics">Physics</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="Computer Science">Computer Science</option>
+            </select>
+          </div>
+          <button id="fetch-articles" class="primary-button">Fetch & Summarize</button>
+        </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Random Article</h2>
+        <p class="helper-text">
+          Get a random article from the downloaded articles with its summary.
+        </p>
+        <div class="form-group">
+          <label for="random-topic">Topic (optional):</label>
+          <input id="random-topic" type="text" placeholder="e.g., Machine Learning" />
+        </div>
+        <button id="random-article" class="primary-button">Get Random Article</button>
+      </section>
+
+      <section class="panel">
+        <div class="result-header">
+          <h2>Summary Result</h2>
+          <span id="model-name" class="badge"></span>
+        </div>
+        <div id="status-message" class="status hidden"></div>
+        <article id="summary-output" class="summary-output">
+          <p class="placeholder">
+            Choose a file to generate a summary. Results will show up here.
+          </p>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <span>API base:</span>
+      <code id="api-base-url"></code>
+    </footer>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
+
