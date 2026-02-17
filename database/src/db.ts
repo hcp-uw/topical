@@ -9,7 +9,7 @@ if (sbKey === undefined) {
 const sb = createClient(sbUrl, sbKey);
 
 // Add a new topic to the database with its title, authors, summary, source and category.
-async function dbInsertTopic(title: String, original_title: String, authors: String, summary: String, source_link: String, category: String) {
+async function dbInsertTopic(title: String, original_title: String, authors: String, summary: String, source_link: String, category: String, date: String) {
     try {
         let res = await sb.from("Topics").insert(
             {
@@ -18,7 +18,8 @@ async function dbInsertTopic(title: String, original_title: String, authors: Str
                 authors: authors.toLowerCase(), 
                 summary: summary, 
                 source_link: source_link, 
-                category: category.toLowerCase()
+                category: category.toLowerCase(),
+                source_date: date // must be form 'YYYY-MM-DD'
             }
         )
         console.log(res)
@@ -30,7 +31,7 @@ async function dbInsertTopic(title: String, original_title: String, authors: Str
 // Get specific topic by ID
 async function dbGetTopic(id: String) {
     try {
-        let res = await sb.from("Topics").select().eq("title", id.toLowerCase());
+        let res = await sb.from("Topics").select().eq("id", id.toLowerCase());
         console.log(res);
         return res;
     } catch (e) {
@@ -38,11 +39,28 @@ async function dbGetTopic(id: String) {
     }
 }
 
-// Get all topics from the database
-async function dbGetAll() {
+// Get n topics that the user hasn't seen from the database
+async function dbGetN(uid: String, n: number) {
     try { 
-        let res = sb.from("Topics").select();
-        console.log(res)
+        let userViews = await sb.from("UserViews").select("topic_id").eq("user_id", uid)
+        console.log("!!!!!")
+        console.log(userViews)
+
+        let topics_query = sb.from("Topics").select("*").limit(Math.floor(n));
+
+        if (userViews.data != null && userViews.data.length > 0) {
+            n = userViews.data.length
+            let topicIds = "("
+            for (let i = 0; i < n - 1; i++) {
+                topicIds += userViews.data[i].topic_id + ","
+            }
+            topicIds += userViews.data[n-1].topic_id + ")"
+
+            topics_query = topics_query.not("id", "in", topicIds);
+        }
+        
+        const res = await topics_query;
+        
         return res;
     } catch (e) {
         console.error(e)
@@ -59,4 +77,4 @@ async function dbGetAuthors(authors: String) {
     return sb.from("Topics").select().eq("authors", authors.toLowerCase())
 }
 
-export {sb, dbInsertTopic, dbGetTopic, dbGetAll, dbGetAuthors, dbGetCategory}
+export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbGetAuthors, dbGetCategory}
