@@ -23,7 +23,7 @@ def dbInsertTopic(title: str, original_title: str, authors: str, summary: str,
             "source_link": source_link, 
             "category": category.lower(),
             "source_date": source_date
-        }).execute()
+        }).execute()  
         print(res)
     except Exception as e:
         print("Error:", e)
