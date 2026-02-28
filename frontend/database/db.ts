@@ -59,14 +59,15 @@ async function dbGetN(uid: String, n: number) {
     }
 }
 
-// Get all topics with a matching category from the database.
-async function dbGetCategory(category: String) {
-    return sb.from("Topics").select().eq("category", category.toLowerCase())
+async function dbSearch(searchTerm: String) {
+    try {
+        let res = await sb.from("Topics").select().or(`title.ilike.${searchTerm},original_title.ilike.${searchTerm},authors.ilike.${searchTerm},summary.ilike.${searchTerm},category.ilike.${searchTerm}`)
+
+        return res
+    } catch (e) {
+        console.error(e)
+    }
 }
 
-// Get all topics with a matching author from the database.
-async function dbGetAuthors(authors: String) {
-    return sb.from("Topics").select().eq("authors", authors.toLowerCase())
-}
 
-export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbGetAuthors, dbGetCategory}
+export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearch}

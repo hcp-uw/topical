@@ -17,6 +17,8 @@ export default function Index() {
   }
   
   const [articles, setArticles] = useState<articleData[] | null>(null)
+  const [articleModalVisible, setArticleModalVisible] = useState(false);
+  const [modalArticle, setModalArticle] = useState<articleData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -24,10 +26,9 @@ export default function Index() {
         // dummy uid for now
         const res = await dbGetN("12345", 10);
 
-        console.log(res)
         // set articles state from response data (handle null)
         if (res && res.data) {
-          // map DB fields to your articleData shape if needed
+          // map DB fields to articleData shape
           const formatted = res.data.map((t: any) => ({
             title: t.title,
             authors: t.authors,
@@ -48,51 +49,6 @@ export default function Index() {
     fetchData()
   }, []);
 
-  const [dummyArticles, setDummyArticles] = useState([
-    {
-      title: "Gene networks regulating adaptive cellular responses",
-      category: "🧬 Biology",
-      summary: "This study explores how gene regulatory networks control cellular responses to environmental changes.",
-      source_date: "11/7/2025",
-      source: "ArViX",
-      source_link: "https://arxiv.org/abs/1234.56789"
-    },
-    {
-      title: "AlphaFold 2 Protein Folding Algorithm Developed at Baker Lab",
-      category: "🧪 Chemistry",
-      summary: "This study presents a breakthrough in protein structure prediction using deep learning.",
-      source_date: "11/7/2025",
-      source: "ArViX",
-      source_link: "https://arxiv.org/abs/1234.56789"
-    },
-    {
-      title: "Quantum coherence effects in superconductors",    
-      category: "🚀 Physics",
-      summary: "This research investigates how quantum coherence affects superconducting properties.",
-      source_date: "11/7/2025",
-      source: "ArViX",
-      source_link: "https://arxiv.org/abs/1234.56789"
-    },
-    {
-      title: "Plasma turbulence shaping fusion reactor behavior",
-      category: "🚀 Physics",
-      summary: "This research investigates how quantum coherence affects superconducting properties.",
-      source_date: "11/7/2025",
-      source: "ArViX",
-      source_link: "https://arxiv.org/abs/1234.56789"
-    },
-    {
-      title: "Plasma turbulence shaping fusion reactor behavior",
-      category: "🚀 Physics",
-      summary: "This research investigates how quantum coherence affects superconducting properties.",
-      source_date: "11/7/2025",
-      source: "ArViX",
-      source_link: "https://arxiv.org/abs/1234.56789"
-    }
-  ]);
-  const [articleModalVisible, setArticleModalVisible] = useState(false);
-  const [modalArticle, setModalArticle] = useState<articleData | null>(null);
-
   const onArticleClick = (article: articleData) => {
     setModalArticle(article);
     setArticleModalVisible(true);
@@ -101,7 +57,12 @@ export default function Index() {
   return (
     <View style={styles.container} >
       <LinearGradient colors={['#00156b', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: -100, height: 1000, zIndex: -10 }} />
-      <Text style={{ color: '#FFFFFF80', fontSize: 22, fontWeight: 700 }}>Top articles for you</Text>
+      <View style={{ width: "100%" }}>
+        <Text style={{ color: '#FFFFFF80', fontSize: 22, fontWeight: 700, marginLeft: "auto", marginRight: "auto" }}>Top articles for you</Text>
+        <Pressable style={styles.filterButton}>
+          <Ionicons name="filter-outline" size={24} color="#FFFFFF80" />
+        </Pressable>
+      </View>
       <ScrollView style={styles.mainBody} contentContainerStyle={{ alignItems: 'center', gap: 10 }} showsVerticalScrollIndicator={false}>
         { articles === null ?
           <></> : 
@@ -146,6 +107,11 @@ const styles = StyleSheet.create({
       color: '#FFFFFF80',
       fontSize: 22,
       fontWeight: 700,
+    },
+    filterButton: {
+      position: "absolute",
+      right: 20,
+      top: 5
     },
     mainBody: {
       marginTop: 20
