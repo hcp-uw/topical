@@ -106,7 +106,7 @@ export default function Index() {
         { articles === null ?
           <></> : 
           articles.map((article, index) => (
-          <Pressable key={index} onPress={() => onArticleClick(article)}>
+          <Pressable style={{ width: "100%" }} key={index} onPress={() => onArticleClick(article)}>
             <Article 
               key={index}
               title={article.title}
