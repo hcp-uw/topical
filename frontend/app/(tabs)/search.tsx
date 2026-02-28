@@ -33,9 +33,7 @@ export default function Search() {
         setArticles([])
       }
       else if (searchTerm !== lastSearch) {
-        console.log("searching")
         const res = await dbSearch(searchTerm);
-        console.log("res:" + JSON.stringify(res))
 
         // set articles state from response data (handle null)
         if (res && res.data) {
@@ -62,7 +60,7 @@ export default function Search() {
   return (
     <View style={styles.container} >
       <LinearGradient colors={['#00156b', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: -100, height: 1000, zIndex: -10 }} />
-      <TextInput style={styles.input} placeholder="University of Washington..." value={searchTerm} onChangeText={setSearchTerm} onSubmitEditing={onSearchClick}/>
+      <TextInput style={styles.input} placeholder="Search for titles, authors, categories..." value={searchTerm} onChangeText={setSearchTerm} onSubmitEditing={onSearchClick}/>
       <ScrollView style={styles.mainBody} contentContainerStyle={{ alignItems: 'center', gap: 10 }} showsVerticalScrollIndicator={false}>
         { articles === null ?
           <View style={styles.splash}>

@@ -61,7 +61,7 @@ async function dbGetN(uid: String, n: number) {
 
 async function dbSearch(searchTerm: String) {
     try {
-        let res = await sb.from("Topics").select().or(`title.ilike.${searchTerm},original_title.ilike.${searchTerm},authors.ilike.${searchTerm},summary.ilike.${searchTerm},category.ilike.${searchTerm}`)
+        let res = await sb.from("Topics").select().or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
 
         return res
     } catch (e) {
