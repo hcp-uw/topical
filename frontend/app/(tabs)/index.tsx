@@ -4,7 +4,8 @@ import Article from "@/components/Article";
 import ArticleModal from "@/components/ArticleModal";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { dbGetN } from '../../database/db'
+import { dbGetCategories, dbGetN } from '../../database/db'
+import { styles } from "@/styles";
 
 export default function Index() {
   interface articleData {
@@ -19,6 +20,9 @@ export default function Index() {
   const [articles, setArticles] = useState<articleData[] | null>(null)
   const [articleModalVisible, setArticleModalVisible] = useState(false);
   const [modalArticle, setModalArticle] = useState<articleData | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,6 +45,16 @@ export default function Index() {
         } else {
           setArticles([]);
         }
+
+        const categories = await dbGetCategories();
+
+        if (categories && categories.data) {
+          const categoriesArr = []
+          for (const item of categories.data) {
+            categoriesArr.push(item);
+          }
+          setCategories(categoriesArr)
+        }
       } catch(e) {
         console.error(e)
       }
@@ -59,7 +73,7 @@ export default function Index() {
       <LinearGradient colors={['#00156b', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: -100, height: 1000, zIndex: -10 }} />
       <View style={{ width: "100%" }}>
         <Text style={{ color: '#FFFFFF80', fontSize: 22, fontWeight: 700, marginLeft: "auto", marginRight: "auto" }}>Top articles for you</Text>
-        <Pressable style={styles.filterButton}>
+        <Pressable style={styles.filterButton} onPress={() => setFilterModalVisible(true)}>
           <Ionicons name="filter-outline" size={24} color="#FFFFFF80" />
         </Pressable>
       </View>
@@ -67,16 +81,17 @@ export default function Index() {
         { articles === null ?
           <></> : 
           articles.map((article, index) => (
-          <Pressable style={{ width: "100%" }} key={index} onPress={() => onArticleClick(article)}>
-            <Article 
-              key={index}
-              title={article.title}
-              field={article.category}
-              date={article.source_date}
-              source={article.authors}
-            />
-          </Pressable>
-        ))}
+            <Pressable style={{ width: "100%" }} key={index} onPress={() => onArticleClick(article)}>
+              <Article 
+                key={index}
+                title={article.title}
+                field={article.category}
+                date={article.source_date}
+                source={article.authors}
+              />
+            </Pressable>
+          ))
+        }
         <Modal visible={articleModalVisible} animationType="slide" transparent={true}>
           <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
           <ArticleModal 
@@ -90,30 +105,21 @@ export default function Index() {
             <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
           </Pressable>
         </Modal>
+        <Modal visible={filterModalVisible} animationType="slide" transparent={true}>
+          <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
+          <ScrollView>
+            { categories === null ?
+              <></> : 
+              categories.map((category, index) => (
+                <Pressable style={{ width: "100%" }} key={index}>{category}</Pressable>
+              ))
+            }
+          </ScrollView>
+          <Pressable onPress={() => setFilterModalVisible(false)} style={{ position: 'absolute', top: 160, right: 20 }}>
+            <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
+          </Pressable>
+        </Modal>
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#0000004D',
-      alignItems: 'center',
-      paddingTop: 20,
-      borderRadius: 30
-    },
-    text: {
-      color: '#FFFFFF80',
-      fontSize: 22,
-      fontWeight: 700,
-    },
-    filterButton: {
-      position: "absolute",
-      right: 20,
-      top: 5
-    },
-    mainBody: {
-      marginTop: 20
-    },
-});

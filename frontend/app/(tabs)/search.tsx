@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { dbSearch } from '../../database/db'
 import Article from "@/components/Article";
 import ArticleModal from "@/components/ArticleModal";
+import { styles } from "@/styles";
 
 export default function Search() {
   interface articleData {
@@ -95,33 +96,3 @@ export default function Search() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#0000004D',
-      alignItems: 'center',
-      paddingTop: 30,
-      borderRadius: 30
-    },
-    input: {
-      backgroundColor: '#FFFFFF05',
-      borderWidth: 1,
-      borderColor: '#FFFFFF1A',
-      borderRadius: 18,
-      width: 340,
-      height: 60,
-      padding: 18,
-      fontSize: 18,
-      color: '#FFFFFF',
-    },
-    splash: {
-      marginTop: 120,
-      width: '70%',
-      alignItems: 'center',
-      gap: 15,
-    },
-    mainBody: {
-      marginTop: 20
-    },
-});

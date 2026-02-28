@@ -1,5 +1,6 @@
 import { StyleSheet, View, Pressable, Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { styles } from '@/styles';
 
 type Props = {
   title: string,
@@ -24,40 +25,3 @@ export default function Article({ title, field, date, source }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  articleContainer: {
-    width: "98%",
-    borderWidth: 1,
-    borderColor: '#FFFFFF08',
-    borderRadius: 25,
-    backgroundColor: '#FFFFFF05',
-    flexDirection: 'column',
-    gap: 20,
-    padding: 20
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 36,
-  },
-  infoContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  articleTitle: {
-    width: "85%",
-    fontSize: 16,
-    fontWeight: 700,
-    color: '#ffffff',
-  },
-  articleField: {
-    backgroundColor: '#FFFFFF0D',
-    borderWidth: 1,
-    borderColor: '#FFFFFF1A',
-    borderRadius: 40,
-    paddingHorizontal: 15,
-    paddingVertical: 7,
-  },
-});

@@ -10,7 +10,7 @@ const sb = createClient(sbUrl, sbKey);
 // Add a new topic to the database with its title, authors, summary, source and category.
 async function dbInsertTopic(title: String, original_title: String, authors: String, summary: String, source_link: String, category: String, date: String) {
     try {
-        let res = await sb.from("Topics").insert(
+        const res = await sb.from("Topics").insert(
             {
                 title: title.toLowerCase(), 
                 original_title: original_title.toLowerCase(), 
@@ -21,16 +21,16 @@ async function dbInsertTopic(title: String, original_title: String, authors: Str
                 source_date: date // must be form 'YYYY-MM-DD'
             }
         )
-        console.log(res)
+        console.log(res);
     } catch (e) {
-        console.error(e)
+        console.error(e);
     }
 }
 
 // Get specific topic by ID
 async function dbGetTopic(id: String) {
     try {
-        let res = await sb.from("Topics").select().eq("id", id.toLowerCase());
+        const res = await sb.from("Topics").select().eq("id", id.toLowerCase());
         console.log(res);
         return res;
     } catch (e) {
@@ -61,13 +61,23 @@ async function dbGetN(uid: String, n: number) {
 
 async function dbSearch(searchTerm: String) {
     try {
-        let res = await sb.from("Topics").select().or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
+        const res = await sb.from("Topics").select().or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
 
-        return res
+        return res;
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+async function dbGetCategories() {
+    try {
+        const res = await sb.rpc("get_categories");
+
+        return res;
     } catch (e) {
         console.error(e)
     }
 }
 
 
-export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearch}
+export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearch, dbGetCategories}
