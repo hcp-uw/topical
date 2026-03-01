@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text, View, Modal, Pressable, StyleSheet, ScrollView } from "react-native";
+import { Text, View, Modal, Pressable, StyleSheet, ScrollView, NativeScrollEvent } from "react-native";
 import Article from "@/components/Article";
 import ArticleModal from "@/components/ArticleModal";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,7 +17,7 @@ export default function Index() {
     source_link: string,
   }
   
-  const [articles, setArticles] = useState<articleData[] | null>(null)
+  const [articles, setArticles] = useState<articleData[]>([])
   const [articleModalVisible, setArticleModalVisible] = useState(false);
   const [modalArticle, setModalArticle] = useState<articleData | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
@@ -61,7 +61,7 @@ export default function Index() {
           source_date: t.source_date,
           source_link: t.source_link
         }));
-        setArticles(formatted);
+        setArticles(articles.concat(formatted));
       } else {
         setArticles([]);
       }
@@ -84,9 +84,16 @@ export default function Index() {
   }
 
   const onFilterSave = () => {
+    setArticles([])
     fetchTopics();
     setFilterModalVisible(false);
   }
+
+  const isCloseToBottom = ({layoutMeasurement, contentOffset, contentSize}: NativeScrollEvent) => {
+    const paddingToBottom = 50;
+    return layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - paddingToBottom;
+  };
 
   return (
     <View style={styles.container} >
@@ -97,7 +104,12 @@ export default function Index() {
           <Ionicons name="filter-outline" size={24} color="#FFFFFF80" />
         </Pressable>
       </View>
-      <ScrollView style={styles.mainBody} contentContainerStyle={{ alignItems: 'center', gap: 10 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.mainBody} contentContainerStyle={{ alignItems: 'center', gap: 10 }} showsVerticalScrollIndicator={false} scrollEventThrottle={400}
+        onScroll={({nativeEvent}) => {
+          if (isCloseToBottom(nativeEvent)) {
+            fetchTopics();
+          }
+        }}>
         { articles === null ?
           <></> : 
           articles.map((article, index) => (
