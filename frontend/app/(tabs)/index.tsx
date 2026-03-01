@@ -25,27 +25,8 @@ export default function Index() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCategories = async () => {
       try {
-        // dummy uid for now
-        const res = await dbGetN("12345", 10);
-
-        // set articles state from response data (handle null)
-        if (res && res.data) {
-          // map DB fields to articleData shape
-          const formatted = res.data.map((t: any) => ({
-            title: t.title,
-            authors: t.authors,
-            category: t.category,
-            summary: t.summary,
-            source_date: t.source_date,
-            source_link: t.source_link
-          }));
-          setArticles(formatted);
-        } else {
-          setArticles([]);
-        }
-
         const categories = await dbGetCategories();
 
         if (categories && categories.data) {
@@ -60,12 +41,51 @@ export default function Index() {
       }
     }
 
-    fetchData()
+    fetchTopics()
+    fetchCategories()
   }, []);
+
+  const fetchTopics = async () => {
+    try {
+      // dummy uid for now
+      const res = await dbGetN("12345", 10, selectedCategories);
+
+      // set articles state from response data (handle null)
+      if (res && res.data) {
+        // map DB fields to articleData shape
+        const formatted = res.data.map((t: any) => ({
+          title: t.title,
+          authors: t.authors,
+          category: t.category,
+          summary: t.summary,
+          source_date: t.source_date,
+          source_link: t.source_link
+        }));
+        setArticles(formatted);
+      } else {
+        setArticles([]);
+      }
+    } catch(e) {
+      console.error(e)
+    }
+  }
 
   const onArticleClick = (article: articleData) => {
     setModalArticle(article);
     setArticleModalVisible(true);
+  }
+
+  const toggleCategory = (category: string) => {
+    if (selectedCategories.includes(category)) {
+      setSelectedCategories(selectedCategories.filter(c => c !== category))
+    } else {
+      setSelectedCategories([...selectedCategories, category])
+    }
+  }
+
+  const onFilterSave = () => {
+    fetchTopics();
+    setFilterModalVisible(false);
   }
 
   return (
@@ -105,18 +125,23 @@ export default function Index() {
             <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
           </Pressable>
         </Modal>
-        <Modal visible={filterModalVisible} animationType="slide" transparent={true}>
+        <Modal visible={filterModalVisible} style={{ width: "100%" }} animationType="slide" transparent={true}>
           <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
-          <ScrollView>
+          <ScrollView style={styles.modalContainer} contentContainerStyle={{flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", flexWrap: "wrap"}}>
             { categories === null ?
               <></> : 
               categories.map((category, index) => (
-                <Pressable style={{ width: "100%" }} key={index}>{category}</Pressable>
+                <Pressable style={[styles.sourceButton, { width: "auto" }, selectedCategories.includes(category) ? { borderWidth: 1, borderColor: "white" } : {}]} onPress={() => toggleCategory(category)} key={index}>
+                  <Text style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>{category}</Text>
+                </Pressable>
               ))
             }
           </ScrollView>
           <Pressable onPress={() => setFilterModalVisible(false)} style={{ position: 'absolute', top: 160, right: 20 }}>
             <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
+          </Pressable>
+          <Pressable style={[styles.sourceButton, { width: "auto", position: "absolute", bottom: 30, left: "50%", transform: "translate(-50%)"}]} onPress={() => onFilterSave()}>
+            <Text style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>Save</Text>
           </Pressable>
         </Modal>
       </ScrollView>

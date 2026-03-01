@@ -17,7 +17,7 @@ export default function Article({ title, field, date, source }: Props) {
         <Ionicons name="chevron-forward-outline" size={12} color="#FFFFFF80" /> 
       </View>
       <View style={styles.infoContainer}>
-        <Pressable onPress={() => console.log(`Filter by ${field}`)} style={styles.articleField}>
+        <Pressable style={styles.articleField}>
           <Text style={{color: '#A4A4A5', fontSize: 13, fontWeight: 700}}>{field}</Text>
         </Pressable>
         <Text style={{color: '#A4A4A5', fontSize: 13, fontWeight: 700}}>{date} • {source}</Text>

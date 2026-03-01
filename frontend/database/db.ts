@@ -39,7 +39,7 @@ async function dbGetTopic(id: String) {
 }
 
 // Get n topics that the user hasn't seen from the database
-async function dbGetN(uid: String, n: number) {
+async function dbGetN(uid: String, n: number, categories: string[]) {
     try { 
         let userViews = await sb.from("UserViews").select("topic_id").eq("user_id", uid)
 
@@ -49,6 +49,9 @@ async function dbGetN(uid: String, n: number) {
 
         if (viewedIds.length > 0) {
             topics_query = topics_query.not("id", "in", `(${viewedIds.join(",")})`);
+        }
+        if (categories.length > 0) {
+            topics_query = topics_query.in("category", categories)
         }
         
         const res = await topics_query;
