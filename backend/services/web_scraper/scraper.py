@@ -331,6 +331,13 @@ class HTMLpull:
         soup = BeautifulSoup(response.text, 'html.parser')
 
         title = soup.title.string if soup.title else ''
+        # Authors: arXiv uses multiple <meta name="citation_author" content="...">
+        authors_list = [
+            m.get("content", "").strip()
+            for m in soup.find_all("meta", attrs={"name": "citation_author"})
+            if m.get("content")
+        ]
+        authors = ", ".join(authors_list) if authors_list else "Unknown"
         # arXiv puts the abstract in a blockquote; fallback to meta description or first blockquote
         abstract = ''
         blockquote = soup.find('blockquote')
@@ -350,6 +357,7 @@ class HTMLpull:
         return {
             'url': url,
             'title': title,
+            'authors': authors,
             'abstract': abstract.strip() if abstract else '',
         }
 
@@ -424,6 +432,7 @@ class HTMLpull:
                 data = self.scrape_arxiv_abstract(abs_url)
                 title = data.get('title') or arxiv_id
                 abstract = (data.get('abstract') or '').strip()
+                authors = data.get('authors') or 'Unknown'
                 if not abstract:
                     continue
                 # Save as {arxiv_id}_abstract.txt (safe filename: no slashes)
@@ -432,7 +441,13 @@ class HTMLpull:
                 filepath = os.path.join(data_dir, filename)
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(f"Title: {title}\n\nAbstract:\n{abstract}\n")
-                result.append({"id": arxiv_id, "title": title, "filename": filename})
+                result.append({
+                    "id": arxiv_id,
+                    "title": title,
+                    "authors": authors,
+                    "filename": filename,
+                    "source_link": abs_url,
+                })
             except Exception as e:
                 continue  # skip failed papers
             if delay > 0:
