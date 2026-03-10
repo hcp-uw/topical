@@ -1,4 +1,5 @@
 import re
+import random
 import time
 import os
 import requests
@@ -404,7 +405,11 @@ class HTMLpull:
         os.makedirs(data_dir, exist_ok=True)
         # arXiv accepts show=25, 50, 100, or 2000 (show=200 returns 400)
         show = 50
-        skip = 0
+        # When using "recent", start at a random offset so repeated fetches get different articles
+        if year is not None and month is not None:
+            skip = 0
+        else:
+            skip = random.randint(0, min(500, max(0, 1000 - max_papers)))  # vary starting page
         all_ids_urls = []
         if year is not None and month is not None:
             base_url = f"https://arxiv.org/list/{subject}/{year:04d}-{month:02d}"
@@ -418,6 +423,7 @@ class HTMLpull:
                 raise RuntimeError(f"Failed to fetch list page {list_url}: {e}") from e
             if not batch:
                 break
+            random.shuffle(batch)  # avoid always taking the same article when max_papers is small
             for aid, abs_url in batch:
                 if len(all_ids_urls) >= max_papers:
                     break
@@ -440,7 +446,7 @@ class HTMLpull:
                 filename = f"{safe_id}_abstract.txt"
                 filepath = os.path.join(data_dir, filename)
                 with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write(f"Title: {title}\n\nAbstract:\n{abstract}\n")
+                    f.write(f"Title: {title}\n\nAuthors: {authors}\n\nAbstract:\n{abstract}\n")
                 result.append({
                     "id": arxiv_id,
                     "title": title,
