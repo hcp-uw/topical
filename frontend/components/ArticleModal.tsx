@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { styles } from '@/styles';
 
 type Props = {
   title: string,
@@ -12,7 +13,7 @@ type Props = {
 
 export default function ArticleModal({ title, summary, date, source, sourceLink }: Props) {
     return (
-        <ScrollView style={styles.container} contentContainerStyle={{ alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+        <ScrollView style={styles.modalContainer} contentContainerStyle={{ alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
             <Text style={{ color: 'white', fontSize: 20, fontWeight: 700 }}>{title}</Text>
             <Text style={{ color: '#FFFFFF50', fontSize: 16, fontWeight: 700 }}>{summary}</Text>
             <View style={styles.infoContainer}>
@@ -32,47 +33,3 @@ export default function ArticleModal({ title, summary, date, source, sourceLink 
         </ScrollView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        top: 145,
-        backgroundColor: '#0000004D',
-        paddingTop: 30,
-        paddingHorizontal: 30,
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-    },
-    infoContainer: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    sourceContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    saveButton: {
-        // width: 80,
-        flexDirection: 'row',
-        gap: 4,
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF05',
-        paddingVertical: 8,
-        paddingHorizontal: 15,
-        borderWidth: 1,
-        borderRadius: 40,
-        borderColor: '#FFFFFF10',
-    },
-    sourceButton: {
-        backgroundColor: '#45FF671A',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderWidth: 1,
-        borderRadius: 15,
-        borderColor: '#79FF050D',
-        gap: 6,
-        width: 300,
-    },
-});
