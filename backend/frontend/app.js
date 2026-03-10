@@ -60,7 +60,7 @@ function renderSummary(summary, model) {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => `<p>${line}</p>`)
+    .map((line) => `<p class="summary-paragraph">${line}</p>`)
     .join("");
   modelNameBadge.textContent = model ? `Model: ${model}` : "";
 }
@@ -75,7 +75,7 @@ function renderSummaryWithImages(summary, model, images) {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => `<p>${line}</p>`)
+    .map((line) => `<p class="summary-paragraph">${line}</p>`)
     .join("");
   
   // Add images section
@@ -107,9 +107,12 @@ function renderBulkSummaries(summaries) {
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line.length > 0)
-        .map((line) => `<p>${line}</p>`)
+        .map((line) => `<p class="summary-paragraph">${line}</p>`)
         .join("");
-      return `<div class="bulk-summary-item"><div class="article-header"><h3>${escapeHtml(s.title || s.filename)}</h3><p class="article-filename">${escapeHtml(s.filename)}</p></div>${summaryHtml}</div>`;
+      const urlBlock = s.url
+        ? `<p class="article-url"><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.url)}</a></p>`
+        : "";
+      return `<div class="bulk-summary-item"><div class="article-header"><h3>${escapeHtml(s.title || s.filename)}</h3><p class="article-filename">${escapeHtml(s.filename)}</p>${urlBlock}</div>${summaryHtml}</div>`;
     })
     .join("");
   summaryOutput.innerHTML = html;
@@ -349,7 +352,7 @@ async function handleFetchAndSummarizeUrl() {
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
-      .map((line) => `<p>${line}</p>`)
+      .map((line) => `<p class="summary-paragraph">${line}</p>`)
       .join("");
     let html = `<div class="article-header"><h3>${result.title}</h3><p class="article-url"><a href="${result.url}" target="_blank" rel="noopener">${result.url}</a></p></div>${summaryHtml}`;
 
@@ -413,11 +416,13 @@ async function handleRandomArticle() {
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
-      .map((line) => `<p>${line}</p>`)
+      .map((line) => `<p class="summary-paragraph">${line}</p>`)
       .join("");
     
-    // Add filename header
-    let html = `<div class="article-header"><h3>${result.filename}</h3></div>${summaryHtml}`;
+    const urlBlock = result.url
+      ? `<p class="article-url"><a href="${escapeHtml(result.url)}" target="_blank" rel="noopener">${escapeHtml(result.url)}</a></p>`
+      : "";
+    let html = `<div class="article-header"><h3>${result.filename}</h3>${urlBlock}</div>${summaryHtml}`;
     
     // Add images if present
     if (result.images && result.images.length > 0) {

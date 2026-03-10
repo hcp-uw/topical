@@ -190,8 +190,32 @@ textarea {
   line-height: 1.5;
 }
 
+/* Paragraph summaries: each line of the summary is a <p class="summary-paragraph">.
+   Change the style below to adjust font, spacing, or appearance of summary paragraphs. */
 .summary-output p {
   margin-top: 0;
+}
+
+.summary-output .summary-paragraph {
+  margin-bottom: 0.75em;
+}
+
+.summary-output .summary-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.article-url {
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.article-url a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.article-url a:hover {
+  text-decoration: underline;
 }
 
 .bulk-summary-item {

@@ -25,12 +25,18 @@ scraper_path = backend_dir / "services" / "web_scraper"
 if str(scraper_path) not in sys.path:
     sys.path.insert(0, str(scraper_path))
 
-# Load database .env (SUPABASE_KEY) and add database/src for dbInsertTopic
-database_src = repo_root / "database" / "src"
-database_env = repo_root / "database" / ".env"
+# Load .env files so TOPICAL_SAVE_TO_DB, LLM_PROVIDER, etc. are read
+from dotenv import load_dotenv
+if (backend_dir / ".env").exists():
+    load_dotenv(backend_dir / ".env")
+# Load database .env (SUPABASE_KEY) and add backend/database/src for dbInsertTopic
+database_src = backend_dir / "database" / "src"
+database_env = backend_dir / "database" / ".env"
 if database_env.exists():
-    from dotenv import load_dotenv
     load_dotenv(database_env)
+# So db.py finds the key: use SUPABASE_KEY or common alternate SUPABASE_ANON_KEY
+if not os.getenv("SUPABASE_KEY") and os.getenv("SUPABASE_ANON_KEY"):
+    os.environ["SUPABASE_KEY"] = os.environ["SUPABASE_ANON_KEY"]
 if str(database_src) not in sys.path:
     sys.path.insert(0, str(database_src))
 
@@ -43,21 +49,21 @@ except ImportError:
     SCRAPER_AVAILABLE = False
 
 # Import database function (saves summaries to Supabase for mobile app)
+db_import_error = None
 try:
     from db import dbInsertTopic
     DB_AVAILABLE = True
-except Exception:
+except Exception as e:
     dbInsertTopic = None
     DB_AVAILABLE = False
+    db_import_error = e
 
 app = FastAPI(title="Topical API", version="1.0.0")
-
-# CORS middleware for React Native app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your React Native app origin
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -75,6 +81,27 @@ file_reader = FileReaderService()
 html_scraper = None
 if SCRAPER_AVAILABLE:
     html_scraper = HTMLpull()
+
+# Set to False to disable saving summaries to the database
+_save_to_db = os.getenv("TOPICAL_SAVE_TO_DB", "1").lower() in ("1", "true", "yes")
+
+
+def _log_db_save_status():
+    """Log at startup why DB save is or isn't active (helps debug 'not saving')."""
+    import logging
+    log = logging.getLogger("uvicorn")
+    raw = os.getenv("TOPICAL_SAVE_TO_DB", "1")
+    if not _save_to_db:
+        log.info(f"DB save: DISABLED (TOPICAL_SAVE_TO_DB={raw!r}; use 1/true/yes to enable)")
+        return
+    if not DB_AVAILABLE or dbInsertTopic is None:
+        log.warning(
+            f"DB save: ENABLED but database unavailable. "
+            f"Import error: {db_import_error}. "
+            f"Check SUPABASE_KEY in backend/database/.env and that the db module loads."
+        )
+        return
+    log.info("DB save: ENABLED (summaries will be written to Supabase). If inserts fail, look for 'Error:' from the database module in this log.")
 
 
 class SummaryRequest(BaseModel):
@@ -105,7 +132,7 @@ class FetchArticlesRequest(BaseModel):
     month: Optional[int] = None
     max_papers: int = 10
     download_pdfs: bool = True
-    summarize_after_fetch: bool = False  # If True, summarize all fetched abstracts in parallel
+    summarize_after_fetch: bool = True
 
 
 class ArticleSummaryItem(BaseModel):
@@ -113,6 +140,7 @@ class ArticleSummaryItem(BaseModel):
     title: str
     summary: str
     model: str
+    url: Optional[str] = None
 
 
 class FetchUrlRequest(BaseModel):
@@ -132,6 +160,7 @@ class RandomArticleResponse(BaseModel):
     summary: str
     model: str
     images: Optional[List[ImageInfo]] = None
+    url: Optional[str] = None
 
 
 def _save_summary_to_db(
@@ -142,10 +171,10 @@ def _save_summary_to_db(
     source_link: str,
     category: str,
     source_date: str,
-):
-    """Call dbInsertTopic from database/src/db.py to save summary for the mobile app."""
-    if not DB_AVAILABLE or dbInsertTopic is None:
-        return
+) -> bool:
+    """Call dbInsertTopic from database/src/db.py to save summary for the mobile app. Returns True if save was attempted (DB available and enabled)."""
+    if not _save_to_db or not DB_AVAILABLE or dbInsertTopic is None:
+        return False
     try:
         dbInsertTopic(
             title=title,
@@ -156,9 +185,11 @@ def _save_summary_to_db(
             category=category or "Uncategorized",
             source_date=source_date,
         )
+        return True
     except Exception as e:
         import logging
         logging.getLogger("uvicorn").warning(f"Could not save summary to database: {e}")
+        return False
 
 
 def _extract_abstract(text: str, max_chars: int = 4000) -> str:
@@ -203,6 +234,11 @@ def _extract_abstract(text: str, max_chars: int = 4000) -> str:
         abstract_text = normalized[:max_chars].strip()
 
     return abstract_text
+
+
+@app.on_event("startup")
+def _startup_log_db():
+    _log_db_save_status()
 
 
 @app.get("/")
@@ -366,7 +402,7 @@ async def fetch_and_summarize_url(request: FetchUrlRequest):
         model_name = llm_service.get_model_name()
 
         source_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        _save_summary_to_db(
+        if _save_summary_to_db(
             title=title,
             original_title=title,
             authors=authors,
@@ -374,8 +410,8 @@ async def fetch_and_summarize_url(request: FetchUrlRequest):
             source_link=url,
             category=request.topic or "Uncategorized",
             source_date=source_date,
-        )
-        logger.info(f"Saved to DB with authors: {authors!r}")
+        ):
+            logger.info(f"Saved to DB with authors: {authors!r}")
 
         return FetchUrlResponse(title=title, url=url, summary=summary, model=model_name)
     except HTTPException:
@@ -438,7 +474,7 @@ async def fetch_articles(request: FetchArticlesRequest):
                     title = item.get("title") or fn
                     authors = item.get("authors") or "Unknown"
                     source_link = item.get("source_link") or ""
-                    _save_summary_to_db(
+                    if _save_summary_to_db(
                         title=title,
                         original_title=title,
                         authors=authors,
@@ -446,13 +482,14 @@ async def fetch_articles(request: FetchArticlesRequest):
                         source_link=source_link,
                         category=subject or "Uncategorized",
                         source_date=source_date,
-                    )
-                    logger.info(f"Saved to DB: title={title!r}, authors={authors!r}")
+                    ):
+                        logger.info(f"Saved to DB: title={title!r}, authors={authors!r}")
                     return ArticleSummaryItem(
                         filename=fn,
                         title=title,
                         summary=summary,
                         model=llm_service.get_model_name(),
+                        url=source_link or None,
                     )
                 except Exception as e:
                     logger.warning(f"Summarize failed for {fn}: {e}")
@@ -532,22 +569,29 @@ async def get_random_article(topic: Optional[str] = None):
                 filename=filename,
                 summary=summary,
                 model=model_name,
-                images=images if images else []
+                images=images if images else [],
+                url=None,
             )
         else:
-            # Regular text file
+            # Regular text file (e.g. arxiv abstract: 2401.00001_abstract.txt)
             text = file_reader.read_file(filename)
             if not text:
                 raise HTTPException(status_code=404, detail=f"File '{filename}' not found or empty")
             
             summary = await llm_service.generate_summary(text, topic)
             model_name = llm_service.get_model_name()
+            # Derive arXiv abs URL from abstract filename when possible
+            article_url = None
+            if filename.endswith("_abstract.txt"):
+                arxiv_id = filename.replace("_abstract.txt", "").replace("_", "/")
+                article_url = f"https://arxiv.org/abs/{arxiv_id}"
             
             return RandomArticleResponse(
                 filename=filename,
                 summary=summary,
                 model=model_name,
-                images=None
+                images=None,
+                url=article_url,
             )
             
     except FileNotFoundError:
