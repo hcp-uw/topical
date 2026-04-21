@@ -73,7 +73,7 @@ app.add_middleware(
 # - "ollama"
 # - "groq" (recommended)
 
-provider = os.getenv("LLM_PROVIDER", "ollama")
+provider = os.getenv("LLM_PROVIDER", "groq")
 model_name = "llama-3.3-70b-versatile" if provider == "groq" else "mistral"
 llm_service = LLMService(provider=provider, model_name=model_name)
 file_reader = FileReaderService()
