@@ -1,12 +1,13 @@
-import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Tabs } from 'expo-router';
+import { Image } from 'react-native';
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#ffffff',
-        headerStyle: { 
+        headerStyle: {
           backgroundColor: '#00000000',
         },
         headerTitleStyle: {
@@ -29,23 +30,36 @@ export default function TabLayout() {
         }
       }}
     >
-      <Tabs.Screen 
-        name="index" 
-        options={{ 
-          title: 'Explore' ,
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'book-sharp' : 'book-outline'} color={color} size={24} />
           ),
-        }} 
+        }}
       />
-      <Tabs.Screen 
-        name="search" 
-        options={{ 
-          title: 'Search' ,
+      <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Search',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'search-sharp' : 'search-outline'} color={color} size={24} />
           ),
-        }} 
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <Image
+              source={require('../../assets/images/profile.png')}
+              style={{ width: 26, height: 26, borderRadius: 13, opacity: focused ? 1 : 0.5 }}
+            />
+          ),
+        }}
       />
     </Tabs>
   );
