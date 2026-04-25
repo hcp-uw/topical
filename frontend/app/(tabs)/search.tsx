@@ -6,6 +6,8 @@ import { dbSearch } from '../../database/db'
 import Article from "@/components/Article";
 import ArticleModal from "@/components/ArticleModal";
 import { styles } from "@/styles";
+import { User } from "@supabase/auth-js";
+import { authCurSession } from "@/database/auth";
 
 export default function Search() {
   interface articleData {
@@ -17,15 +19,25 @@ export default function Search() {
     source_link: string,
   }
   
-  const [articles, setArticles] = useState<articleData[] | null>(null)
+  const [articles, setArticles] = useState<articleData[] | null>(null);
   const [articleModalVisible, setArticleModalVisible] = useState(false);
   const [modalArticle, setModalArticle] = useState<articleData | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");  
   const [lastSearch, setLastSearch] = useState<string>("");  
+  const [user, setUser] = useState<User | null>(null);
+  
+  useEffect(() => {
+    checkAuth();
+  }, [])
 
   const onArticleClick = (article: articleData) => {
     setModalArticle(article);
     setArticleModalVisible(true);
+  }
+
+  const checkAuth = async () => {
+    const u = await authCurSession(); 
+    setUser(u); 
   }
 
   const onSearchClick = async () => {
@@ -87,6 +99,7 @@ export default function Search() {
             date={modalArticle?.source_date || "Source date not found."}
             source={modalArticle?.authors || "Authors not found."}
             sourceLink={modalArticle?.source_link || "Link not found."}
+            loggedIn={user != null}
           />
           <Pressable onPress={() => setArticleModalVisible(false)} style={{ position: 'absolute', top: 160, right: 20 }}>
             <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 

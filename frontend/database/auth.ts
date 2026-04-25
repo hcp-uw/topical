@@ -47,4 +47,9 @@ async function authSignOut() {
     }
 }
 
-export { authSignUp, authLogIn, authSignOut }
+async function authCurSession() {
+    const { data: { user } } = await sb.auth.getUser()
+    return user;
+}
+
+export { authSignUp, authLogIn, authSignOut, authCurSession }
