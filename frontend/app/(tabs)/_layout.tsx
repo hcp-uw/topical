@@ -1,8 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Image } from 'react-native';
+import { useEffect } from 'react';
+import { isAuthenticated } from '@/app/auth/auth';
 
 export default function TabLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      const timeout = setTimeout(() => {
+        router.replace('/auth/launch');
+      }, 0);
+      return () => clearTimeout(timeout);
+    }
+  }, [router]);
+
   return (
     <Tabs
       screenOptions={{
