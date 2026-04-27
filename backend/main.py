@@ -325,10 +325,6 @@ def _startup_scheduler():
     logger = logging.getLogger("uvicorn")
     logger.info("Weekly scheduler started: fetches every Monday at 06:00 UTC")
 
-    # Run once immediately on startup so we don't wait until Monday
-    _run_scheduled_job()
-    logger.info("Initial fetch triggered on startup.")
-
 
 @app.get("/")
 async def root():
