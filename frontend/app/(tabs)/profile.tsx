@@ -40,6 +40,7 @@ export default function Profile() {
     const checkAuth = async () => {
         const u = await authCurSession(); 
         setUser(u); 
+        console.log("user: " + JSON.stringify(u));
     }
 
     return (
@@ -63,8 +64,8 @@ export default function Profile() {
                         source={require('../../assets/images/profile.png')}
                         style={styles.profileImage}
                     />
-                    <Text style={styles.nameText}>{user?.id}</Text>
-                    <Text style={styles.joinText}>Joined {user?.created_at}</Text>
+                    <Text style={styles.nameText}>{user?.user_metadata?.name}</Text>
+                    <Text style={styles.joinText}>Joined {new Date(user?.created_at).toLocaleDateString()}</Text>
                 </View>
             </View>
 

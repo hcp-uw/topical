@@ -13,7 +13,7 @@ export default function TabLayout() {
       const u = await authCurSession();
       if (u == null) {
         const timeout = setTimeout(() => {
-          router.replace('/auth/launch');
+          router.replace('/auth/login');
         }, 0);
         return () => clearTimeout(timeout);
       }

@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
       width: '70%',
       alignItems: 'center',
       gap: 15,
-    },
+    }
 });
 
 export { styles };
