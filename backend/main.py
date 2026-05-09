@@ -301,27 +301,30 @@ async def _scheduled_fetch_and_summarize():
     logger.info("Scheduled weekly fetch complete.")
 
 
-def _run_scheduled_job():
-    """Bridge: run the async scheduled job from the sync APScheduler callback."""
-    loop = asyncio.get_event_loop()
-    loop.create_task(_scheduled_fetch_and_summarize())
-
-
 @app.on_event("startup")
-def _startup_scheduler():
+async def _startup_scheduler():
     _log_db_save_status()
 
-    from apscheduler.schedulers.background import BackgroundScheduler
-    scheduler = BackgroundScheduler()
+    # Use AsyncIOScheduler so the job runs on the running uvicorn event loop.
+    # BackgroundScheduler runs jobs in a worker thread that has no event loop,
+    # which made `asyncio.get_event_loop()` raise RuntimeError on Python 3.12+
+    # (and immediately under uvloop) when the cron fired.
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    scheduler = AsyncIOScheduler(event_loop=asyncio.get_running_loop())
     scheduler.add_job(
-        _run_scheduled_job,
+        _scheduled_fetch_and_summarize,
         trigger="cron",
         day_of_week="mon",
         hour=6,
         minute=0,
         id="weekly_fetch",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=3600,
     )
     scheduler.start()
+    # Keep a reference on the app so the scheduler isn't garbage-collected.
+    app.state.scheduler = scheduler
     logger = logging.getLogger("uvicorn")
     logger.info("Weekly scheduler started: fetches every Monday at 06:00 UTC")
 
