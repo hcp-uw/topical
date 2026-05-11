@@ -1,17 +1,25 @@
-import React from "react";
+import React, { useState } from "react";
 import { Text, View, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { setAuthenticated } from "@/app/auth/auth";
 
 export default function Index() {
-  const router = useRouter();
+  const router = useRouter(); 
+  const [firstSignIn, setFirstSignIn] = useState(true);
 
   const onSignIn = () => {
     setAuthenticated(true);
-    setTimeout(() => {
-      router.replace('/');
-    }, 0);
+    if (firstSignIn) {
+      setTimeout(() => {
+        router.replace('/auth/preferences');
+      }, 0);
+    }
+    else {
+      setTimeout(() => {
+        router.replace('/');
+      }, 0);
+    }
   };
 
   return (
