@@ -4,6 +4,7 @@ FastAPI backend for Topical - Academic Paper Summarization App
 
 import os
 import sys
+import json
 import random
 import datetime
 import re
@@ -243,62 +244,104 @@ def _extract_abstract(text: str, max_chars: int = 4000) -> str:
 
 SCHEDULED_CATEGORIES = ["cs", "math", "physics", "astro-ph", "q-bio", "stat"]
 SCHEDULED_PAPERS_PER_CATEGORY = 20
+SUMMARIZE_BATCH_SIZE = 5  # papers processed per hourly tick
 
 
-async def _scheduled_fetch_and_summarize():
-    """Weekly job: fetch and summarize articles from all configured categories."""
+def _pending_dir() -> Path:
+    """Directory holding fetched-but-not-yet-summarized abstracts (the queue)."""
+    p = file_reader.get_data_dir_path() / "pending"
+    p.mkdir(exist_ok=True)
+    return p
+
+
+async def _scheduled_fetch():
+    """Weekly job: fetch arXiv abstracts into the pending queue. Does NOT call the LLM."""
     logger = logging.getLogger("uvicorn")
+    if not SCRAPER_AVAILABLE or not html_scraper:
+        logger.warning("Scraper unavailable, skipping scheduled fetch.")
+        return
+
     logger.info("Scheduled weekly fetch starting...")
     source_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    pending = _pending_dir()
+    total_queued = 0
 
     for subject in SCHEDULED_CATEGORIES:
         logger.info(f"Fetching {SCHEDULED_PAPERS_PER_CATEGORY} articles for '{subject}'...")
         try:
-            if not SCRAPER_AVAILABLE or not html_scraper:
-                logger.warning("Scraper unavailable, skipping scheduled fetch.")
-                return
-
-            data_dir = str(file_reader.get_data_dir_path())
             result = html_scraper.fetch_arxiv_abstracts_bulk(
                 subject=subject,
                 year=None,
                 month=None,
                 max_papers=SCHEDULED_PAPERS_PER_CATEGORY,
-                data_dir=data_dir,
+                data_dir=str(pending),
                 delay=0.5,
             )
-            logger.info(f"Fetched {len(result)} abstracts for '{subject}', summarizing...")
-
+            # Write a JSON sidecar per abstract so the summarizer has the metadata it needs.
             for item in result:
-                try:
-                    text = file_reader.read_file(item["filename"])
-                    original_title = item.get("title") or item["filename"]
-                    llm_result = await llm_service.generate_summary(text, None, title=original_title)
-                    summary_text = llm_result["summary"]
-                    friendly_title = llm_result.get("friendly_title") or None
-                    authors = item.get("authors") or "Unknown"
-                    source_link = item.get("source_link") or ""
-                    _save_summary_to_db(
-                        title=friendly_title or original_title,
-                        original_title=original_title,
-                        authors=authors,
-                        summary=summary_text,
-                        source_link=source_link,
-                        category=subject,
-                        source_date=source_date,
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to summarize {item.get('filename')}: {e}")
-                finally:
-                    path = file_reader.get_data_dir_path() / item["filename"]
-                    if path.exists():
-                        path.unlink(missing_ok=True)
-
-            logger.info(f"Done with '{subject}'.")
+                sidecar = pending / (Path(item["filename"]).stem + ".json")
+                with open(sidecar, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "filename": item["filename"],
+                        "title": item.get("title") or item["filename"],
+                        "authors": item.get("authors") or "Unknown",
+                        "source_link": item.get("source_link") or "",
+                        "category": subject,
+                        "source_date": source_date,
+                    }, f)
+            total_queued += len(result)
+            logger.info(f"Queued {len(result)} abstracts for '{subject}'.")
         except Exception as e:
             logger.error(f"Scheduled fetch failed for '{subject}': {e}")
 
-    logger.info("Scheduled weekly fetch complete.")
+    logger.info(f"Scheduled weekly fetch complete. Total queued: {total_queued}.")
+
+
+async def _scheduled_summarize_pending():
+    """Hourly job: summarize up to SUMMARIZE_BATCH_SIZE pending abstracts and save to DB."""
+    logger = logging.getLogger("uvicorn")
+    pending = _pending_dir()
+    sidecars = sorted(pending.glob("*.json"))
+    if not sidecars:
+        return
+
+    batch = sidecars[:SUMMARIZE_BATCH_SIZE]
+    logger.info(f"Summarizing {len(batch)} pending abstract(s) (queue size: {len(sidecars)})...")
+
+    for sidecar_path in batch:
+        abstract_path = None
+        try:
+            with open(sidecar_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            abstract_path = pending / meta["filename"]
+            if not abstract_path.exists():
+                logger.warning(f"Abstract file missing for {sidecar_path.name}, dropping.")
+                sidecar_path.unlink(missing_ok=True)
+                continue
+
+            with open(abstract_path, "r", encoding="utf-8") as f:
+                text = f.read()
+
+            original_title = meta["title"]
+            llm_result = await llm_service.generate_summary(text, None, title=original_title)
+            summary_text = llm_result["summary"]
+            friendly_title = llm_result.get("friendly_title") or None
+            _save_summary_to_db(
+                title=friendly_title or original_title,
+                original_title=original_title,
+                authors=meta["authors"],
+                summary=summary_text,
+                source_link=meta["source_link"],
+                category=meta["category"] or "Uncategorized",
+                source_date=meta["source_date"],
+            )
+            abstract_path.unlink(missing_ok=True)
+            sidecar_path.unlink(missing_ok=True)
+        except Exception as e:
+            logger.warning(f"Summarize failed for {sidecar_path.name}: {e}")
+            # Leave the sidecar/abstract in place so the next tick can retry.
+
+    logger.info("Hourly summarize tick complete.")
 
 
 @app.on_event("startup")
@@ -311,8 +354,9 @@ async def _startup_scheduler():
     # (and immediately under uvloop) when the cron fired.
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
     scheduler = AsyncIOScheduler(event_loop=asyncio.get_running_loop())
+    # Weekly: fetch abstracts into the pending queue (no LLM calls here).
     scheduler.add_job(
-        _scheduled_fetch_and_summarize,
+        _scheduled_fetch,
         trigger="cron",
         day_of_week="mon",
         hour=6,
@@ -322,11 +366,21 @@ async def _startup_scheduler():
         coalesce=True,
         misfire_grace_time=3600,
     )
+    # Hourly: drain the queue in small batches so we never spike token usage.
+    scheduler.add_job(
+        _scheduled_summarize_pending,
+        trigger="cron",
+        minute=15,
+        id="hourly_summarize",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=600,
+    )
     scheduler.start()
     # Keep a reference on the app so the scheduler isn't garbage-collected.
     app.state.scheduler = scheduler
     logger = logging.getLogger("uvicorn")
-    logger.info("Weekly scheduler started: fetches every Monday at 06:00 UTC")
+    logger.info("Scheduler started: weekly fetch (Mon 06:00 UTC), hourly summarize trickle (:15)")
 
 
 @app.get("/")
