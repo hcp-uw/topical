@@ -82,5 +82,45 @@ async function dbGetCategories() {
     }
 }
 
+async function dbGetLiked(userId: string, topicId: string) {
+    try {
+        const {data, error} = await sb.from("likes").select().eq("user_id", userId).eq("topic_id", topicId);
+        if (error !== null) {
+            alert("Error fetching like status: " + error);
+        } else if (data.length === 1) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
 
-export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearch, dbGetCategories}
+async function dbSetLiked(userId: string, topicId: string, status: boolean) {
+    try {
+        if (status) {
+            const {error} = await sb.from("likes").upsert({user_id: userId, topic_id: topicId});
+        } else {
+            const {error} = await sb.from("likes").delete().eq("user_id", userId).eq("topic_id", topicId);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function dbGetUserLikes(userId: string) {
+    try {
+        const {data, error} = await sb.from("likes").select("topic_id").eq("user_id", userId);
+        if (error !== null) {
+            alert("Error fetching liked topics: " + error);
+        } else {
+            return data;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+
+export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearch, dbGetCategories, dbGetLiked, dbSetLiked, dbGetUserLikes}

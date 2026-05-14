@@ -17,6 +17,7 @@ export default function Index() {
     summary: string,
     source_date: string,
     source_link: string,
+    topic_id: string
   }
   
   const [articles, setArticles] = useState<articleData[]>([])
@@ -63,7 +64,8 @@ export default function Index() {
           category: t.category,
           summary: t.summary,
           source_date: t.source_date,
-          source_link: t.source_link
+          source_link: t.source_link,
+          topic_id: t.id
         }));
         setArticles(articles.concat(formatted));
       }
@@ -135,6 +137,8 @@ export default function Index() {
             source={modalArticle?.authors || "Authors not found."}
             sourceLink={modalArticle?.source_link || "Link not found."}
             loggedIn={user != null}
+            userId={user?.id || "Not logged in."}
+            topicId={modalArticle?.topic_id || "ID not found."}
           />
           <Pressable onPress={() => setArticleModalVisible(false)} style={{ position: 'absolute', top: 160, right: 20 }}>
             <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
