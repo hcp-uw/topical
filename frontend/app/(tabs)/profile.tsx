@@ -1,11 +1,14 @@
 import Article from "@/components/Article";
+import { authCurSession, authSignOut } from "@/database/auth";
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { User } from "@supabase/auth-js";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from 'expo-router';
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Image, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 
 export default function Profile() {
+    const [user, setUser] = useState<User | null>(null);
     const savedArticles = [
         {
             title: "AlphaFold 2 Protein Folding Algorithm Developed at Baker Lab",
@@ -30,7 +33,30 @@ export default function Profile() {
         }
     ];
 
+    useEffect(() => {
+        checkAuth();
+    }, [])
+
+    const checkAuth = async () => {
+        const u = await authCurSession(); 
+        setUser(u); 
+        console.log("user: " + JSON.stringify(u));
+    }
+
+    const onLogout = async () => {
+        const authRes = await authSignOut();
+        if (authRes !== null) {
+            alert("Error signing out: " + authRes);
+        } else {
+            setTimeout(() => {
+                router.replace('/auth/login');
+            }, 0);
+        }
+    }
+
     return (
+    <>
+        { user != null ? 
         <View style={styles.container}>
             <LinearGradient
                 colors={['#07133f', '#07133f', '#090a10']}
@@ -49,8 +75,8 @@ export default function Profile() {
                         source={require('../../assets/images/profile.png')}
                         style={styles.profileImage}
                     />
-                    <Text style={styles.nameText}>Harry the Husky</Text>
-                    <Text style={styles.joinText}>Joined 11/17/2025</Text>
+                    <Text style={styles.nameText}>{user?.user_metadata?.name}</Text>
+                    <Text style={styles.joinText}>Joined {new Date(user?.created_at).toLocaleDateString()}</Text>
                 </View>
             </View>
 
@@ -72,8 +98,24 @@ export default function Profile() {
                         />
                     ))}
                 </ScrollView>
+
+                <Pressable onPress={onLogout} style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 30 }}>
+                    <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log out</Text>
+                </Pressable>
             </View>
         </View>
+        :
+        <View style={styles.container}>
+            <LinearGradient
+                colors={['#07133f', '#07133f', '#090a10']}
+                style={StyleSheet.absoluteFillObject}
+            />
+            <View style={[styles.topSection, {alignItems: "center", justifyContent: "center", width: "100%", height: "100%"}]}>
+                <Text style={styles.nameText}>Please sign in</Text>
+            </View>
+        </View>
+        }
+    </>
     );
 }
 

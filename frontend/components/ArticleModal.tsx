@@ -9,18 +9,23 @@ type Props = {
   date: string,
   source: string,
   sourceLink: string,
+  loggedIn: boolean
 };
 
-export default function ArticleModal({ title, summary, date, source, sourceLink }: Props) {
+export default function ArticleModal({ title, summary, date, source, sourceLink, loggedIn }: Props) {
     return (
         <ScrollView style={styles.modalContainer} contentContainerStyle={{ alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
             <Text style={{ color: 'white', fontSize: 20, fontWeight: 700 }}>{title}</Text>
             <Text style={{ color: '#FFFFFF50', fontSize: 16, fontWeight: 700 }}>{summary}</Text>
             <View style={styles.infoContainer}>
+                { loggedIn ? 
                 <Pressable onPress={() => console.log("Save the article")} style={styles.saveButton}>
                     <Ionicons name="bookmark-outline" size={16} color="#FFFFFF80" /> 
                     <Text style={{ color: '#A4A4A5' }}>Save</Text>
                 </Pressable>
+                : 
+                <></>
+                }
                 <Text style={{ color: '#A4A4A5', fontSize: 13, fontWeight: 700 }}>{date} • {source}</Text>
             </View>
             <Pressable onPress={() => console.log(`Open ${sourceLink} in browser`)} style={styles.sourceButton}>

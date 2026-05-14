@@ -6,6 +6,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { dbGetCategories, dbGetN } from '../../database/db'
 import { styles } from "@/styles";
+import { authCurSession } from "@/database/auth";
+import { User } from "@supabase/supabase-js";
 
 export default function Index() {
   interface articleData {
@@ -23,6 +25,7 @@ export default function Index() {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -41,14 +44,15 @@ export default function Index() {
       }
     }
 
-    fetchTopics()
-    fetchCategories()
+    fetchTopics();
+    fetchCategories();
   }, []);
 
   const fetchTopics = async () => {
     try {
-      // dummy uid for now
-      const res = await dbGetN("12345", 10, selectedCategories);
+      const u = await authCurSession(); 
+      setUser(u);
+      const res = await dbGetN(u && u.id ? u.id : "null", 10, selectedCategories);
 
       // set articles state from response data (handle null)
       if (res && res.data) {
@@ -62,8 +66,6 @@ export default function Index() {
           source_link: t.source_link
         }));
         setArticles(articles.concat(formatted));
-      } else {
-        setArticles([]);
       }
     } catch(e) {
       console.error(e)
@@ -132,6 +134,7 @@ export default function Index() {
             date={modalArticle?.source_date || "Source date not found."}
             source={modalArticle?.authors || "Authors not found."}
             sourceLink={modalArticle?.source_link || "Link not found."}
+            loggedIn={user != null}
           />
           <Pressable onPress={() => setArticleModalVisible(false)} style={{ position: 'absolute', top: 160, right: 20 }}>
             <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 

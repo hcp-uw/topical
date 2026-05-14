@@ -4,19 +4,18 @@ import { sb } from './db';
 // Documentation: https://supabase.com/docs/reference/javascript/v1/auth-signin
 
 // Add user when they sign up
-async function authSignUp(email: string, password: string, fname: string, lname: string) {
+async function authSignUp(email: string, password: string, name: string) {
     try {
-        let res = await sb.auth.signUp({
+        let {data, error} = await sb.auth.signUp({
             email: email,
             password: password,
             options: {
                 data: {
-                    first_name: fname, 
-                    last_name: lname
+                    name: name
                 }
             }
         })
-        console.log(res)
+        return error === null ? data : null;
     } catch (e) {
         console.error(e);
     }
@@ -25,12 +24,11 @@ async function authSignUp(email: string, password: string, fname: string, lname:
 // Checks the database for user trying to log in
 async function authLogIn(email: string, password: string) {
     try {
-        let res = await sb.auth.signInWithPassword({
+        const {data, error} = await sb.auth.signInWithPassword({
             email: email,
             password: password,
         })
-        console.log(res);
-        return res;
+        return error === null ? data : null;
     } catch (e) {
         console.error(e);
     }
@@ -39,12 +37,16 @@ async function authLogIn(email: string, password: string) {
 // Signs the user out
 async function authSignOut() {
     try {
-        let res = await sb.auth.signOut() 
-        console.log(res);
-        return res;
+        const {error} = await sb.auth.signOut() 
+        return error;
     } catch (e) {
         console.error(e);
     }
 }
 
-export { authSignUp, authLogIn, authSignOut }
+async function authCurSession() {
+    const { data: { user } } = await sb.auth.getUser()
+    return user;
+}
+
+export { authSignUp, authLogIn, authSignOut, authCurSession }

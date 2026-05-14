@@ -3,17 +3,23 @@ import { Tabs, useRouter } from 'expo-router';
 import { Image } from 'react-native';
 import { useEffect } from 'react';
 import { isAuthenticated } from '@/app/auth/auth';
+import { authCurSession } from '@/database/auth';
 
 export default function TabLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      const timeout = setTimeout(() => {
-        router.replace('/auth/launch');
-      }, 0);
-      return () => clearTimeout(timeout);
+    const loginRedirect = async () => {
+      const u = await authCurSession();
+      if (u == null) {
+        const timeout = setTimeout(() => {
+          router.replace('/auth/login');
+        }, 0);
+        return () => clearTimeout(timeout);
+      }
     }
+     
+    loginRedirect();
   }, [router]);
 
   return (
