@@ -15,7 +15,6 @@ async function authSignUp(email: string, password: string, name: string) {
                 }
             }
         })
-        console.log("data: " + data + " error: " + error);
         return error === null ? data : null;
     } catch (e) {
         console.error(e);
@@ -29,7 +28,6 @@ async function authLogIn(email: string, password: string) {
             email: email,
             password: password,
         })
-        console.log("data: " + data + " error: " + error);
         return error === null ? data : null;
     } catch (e) {
         console.error(e);
@@ -39,9 +37,8 @@ async function authLogIn(email: string, password: string) {
 // Signs the user out
 async function authSignOut() {
     try {
-        let res = await sb.auth.signOut() 
-        console.log(res);
-        return res;
+        const {error} = await sb.auth.signOut() 
+        return error;
     } catch (e) {
         console.error(e);
     }

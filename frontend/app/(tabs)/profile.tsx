@@ -1,5 +1,5 @@
 import Article from "@/components/Article";
-import { authCurSession } from "@/database/auth";
+import { authCurSession, authSignOut } from "@/database/auth";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { User } from "@supabase/auth-js";
 import { LinearGradient } from "expo-linear-gradient";
@@ -41,6 +41,17 @@ export default function Profile() {
         const u = await authCurSession(); 
         setUser(u); 
         console.log("user: " + JSON.stringify(u));
+    }
+
+    const onLogout = async () => {
+        const authRes = await authSignOut();
+        if (authRes !== null) {
+            alert("Error signing out: " + authRes);
+        } else {
+            setTimeout(() => {
+                router.replace('/auth/login');
+            }, 0);
+        }
     }
 
     return (
@@ -87,6 +98,10 @@ export default function Profile() {
                         />
                     ))}
                 </ScrollView>
+
+                <Pressable onPress={onLogout} style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 30 }}>
+                    <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log out</Text>
+                </Pressable>
             </View>
         </View>
         :
