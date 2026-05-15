@@ -1,46 +1,53 @@
 import Article from "@/components/Article";
+import ArticleModal from "@/components/ArticleModal";
 import { authCurSession, authSignOut } from "@/database/auth";
+import { dbGetUserLikes } from "@/database/db";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { User } from "@supabase/auth-js";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from 'expo-router';
 import React, { useEffect, useState } from "react";
-import { Image, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 
 export default function Profile() {
+    interface articleData {
+        title: string,
+        authors: string,
+        category: string,
+        summary: string,
+        source_date: string,
+        source_link: string,
+        topic_id: string
+    }
+    
     const [user, setUser] = useState<User | null>(null);
-    const savedArticles = [
-        {
-            title: "AlphaFold 2 Protein Folding Algorithm Developed at Baker Lab",
-            field: "🧪 Chemistry",
-            summary: "This study presents a breakthrough in protein structure prediction using deep learning.",
-            date: "11/7/2025",
-            source: "ArViX",
-        },
-        {
-            title: "Quantum coherence effects in superconductors",
-            field: "🚀 Physics",
-            summary: "This research investigates how quantum coherence affects superconducting properties.",
-            date: "11/7/2025",
-            source: "ArViX",
-        },
-        {
-            title: "Plasma turbulence shaping fusion reactor behavior",
-            field: "🚀 Physics",
-            summary: "This research investigates how quantum coherence affects superconducting properties.",
-            date: "11/7/2025",
-            source: "ArViX",
-        }
-    ];
+    const [liked, setLiked] = useState<articleData[]>([]);
+    const [modalArticle, setModalArticle] = useState<articleData | null>(null);
+    const [articleModalVisible, setArticleModalVisible] = useState(false);
 
     useEffect(() => {
-        checkAuth();
+        checkAuthAndFetchLiked();
     }, [])
 
-    const checkAuth = async () => {
-        const u = await authCurSession(); 
-        setUser(u); 
-        console.log("user: " + JSON.stringify(u));
+    const checkAuthAndFetchLiked = async () => {
+        const u = await authCurSession();
+        setUser(u);
+        if (u) {
+            const data = await dbGetUserLikes(u.id);
+            if (data) {
+                // map DB fields to articleData shape
+                const formatted = data.map((t: any) => ({
+                    title: t.title,
+                    authors: t.authors,
+                    category: t.category,
+                    summary: t.summary,
+                    source_date: t.source_date,
+                    source_link: t.source_link,
+                    topic_id: t.id
+                }));
+                setLiked(formatted);
+            }
+        }
     }
 
     const onLogout = async () => {
@@ -52,6 +59,11 @@ export default function Profile() {
                 router.replace('/auth/login');
             }, 0);
         }
+    }
+
+    const onArticleClick = (article: articleData) => {
+        setModalArticle(article);
+        setArticleModalVisible(true);
     }
 
     return (
@@ -83,25 +95,43 @@ export default function Profile() {
             {/* bottom part   */}
             <View style={styles.bottomSection}>
                 <View style={styles.listHeaderContainer}>
-                    <Text style={styles.listHeaderTitle}>Saved articles</Text>
-                    <Ionicons name="filter-outline" size={24} color="#A4A4A5" />
+                    <Text style={styles.listHeaderTitle}>Saved topics</Text>
                 </View>
 
                 <ScrollView contentContainerStyle={styles.articlesList} showsVerticalScrollIndicator={false}>
-                    {savedArticles.map((article, index) => (
-                        <Article
+                    {liked.map((article, index) => (
+                        <Pressable style={{ width: "100%" }} key={index} onPress={() => onArticleClick(article)}>
+                            <Article 
                             key={index}
                             title={article.title}
-                            field={article.field}
-                            date={article.date}
-                            source={article.source}
-                        />
-                    ))}
+                            field={article.category}
+                            date={article.source_date}
+                            source={article.authors}
+                            />
+                        </Pressable>
+                        ))}
                 </ScrollView>
 
                 <Pressable onPress={onLogout} style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 30 }}>
                     <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log out</Text>
                 </Pressable>
+
+                <Modal visible={articleModalVisible} animationType="slide" transparent={true}>
+                    <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
+                    <ArticleModal 
+                        title={modalArticle?.title || "Title not found."}
+                        summary={modalArticle?.summary || "Summary not found."}
+                        date={modalArticle?.source_date || "Source date not found."}
+                        source={modalArticle?.authors || "Authors not found."}
+                        sourceLink={modalArticle?.source_link || "Link not found."}
+                        loggedIn={user != null}
+                        userId={user?.id || "Not logged in."}
+                        topicId={modalArticle?.topic_id || "ID not found."}
+                    />
+                    <Pressable onPress={() => setArticleModalVisible(false)} style={{ position: 'absolute', top: 160, right: 20 }}>
+                        <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
+                    </Pressable>
+                </Modal>
             </View>
         </View>
         :

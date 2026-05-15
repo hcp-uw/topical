@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { styles } from '@/styles';
+import { dbGetLiked, dbSetLiked } from '@/database/db';
 
 type Props = {
   title: string,
@@ -9,19 +10,38 @@ type Props = {
   date: string,
   source: string,
   sourceLink: string,
-  loggedIn: boolean
+  loggedIn: boolean,
+  userId: string,
+  topicId: string
 };
 
-export default function ArticleModal({ title, summary, date, source, sourceLink, loggedIn }: Props) {
+export default function ArticleModal({ title, summary, date, source, sourceLink, loggedIn, userId, topicId }: Props) {
+    const [liked, setLiked] = useState(false);
+
+    useEffect(() => {
+        async function getLike() {
+            if (loggedIn) {
+                setLiked(await dbGetLiked(userId, topicId) || false);
+            }
+        }
+
+        getLike()
+    }, []);
+    
+    const onLike = async () => {
+        dbSetLiked(userId, topicId, !liked);
+        setLiked(!liked);
+    }
+
     return (
         <ScrollView style={styles.modalContainer} contentContainerStyle={{ alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
             <Text style={{ color: 'white', fontSize: 20, fontWeight: 700 }}>{title}</Text>
             <Text style={{ color: '#FFFFFF50', fontSize: 16, fontWeight: 700 }}>{summary}</Text>
             <View style={styles.infoContainer}>
                 { loggedIn ? 
-                <Pressable onPress={() => console.log("Save the article")} style={styles.saveButton}>
-                    <Ionicons name="bookmark-outline" size={16} color="#FFFFFF80" /> 
-                    <Text style={{ color: '#A4A4A5' }}>Save</Text>
+                <Pressable onPress={() => onLike()} style={styles.saveButton}>
+                    <Ionicons name={liked ? "heart" : "heart-outline"} size={16} color="#FFFFFF80" /> 
+                    <Text style={{ color: '#A4A4A5' }}>{liked ? "Liked" : "Like"}</Text>
                 </Pressable>
                 : 
                 <></>
