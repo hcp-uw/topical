@@ -47,7 +47,6 @@ export default function Profile() {
                 }));
                 setLiked(formatted);
             }
-            console.log(data);
         }
     }
 
@@ -63,7 +62,6 @@ export default function Profile() {
     }
 
     const onArticleClick = (article: articleData) => {
-        console.log("article: " + JSON.stringify(article));
         setModalArticle(article);
         setArticleModalVisible(true);
     }
@@ -97,8 +95,7 @@ export default function Profile() {
             {/* bottom part   */}
             <View style={styles.bottomSection}>
                 <View style={styles.listHeaderContainer}>
-                    <Text style={styles.listHeaderTitle}>Saved articles</Text>
-                    <Ionicons name="filter-outline" size={24} color="#A4A4A5" />
+                    <Text style={styles.listHeaderTitle}>Saved topics</Text>
                 </View>
 
                 <ScrollView contentContainerStyle={styles.articlesList} showsVerticalScrollIndicator={false}>

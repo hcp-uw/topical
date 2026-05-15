@@ -108,7 +108,7 @@ export default function Index() {
     <View style={styles.container} >
       <LinearGradient colors={['#00156b', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: -100, height: 1000, zIndex: -10 }} />
       <View style={{ width: "100%" }}>
-        <Text style={{ color: '#FFFFFF80', fontSize: 22, fontWeight: 700, marginLeft: "auto", marginRight: "auto" }}>Top articles for you</Text>
+        <Text style={{ color: '#FFFFFF80', fontSize: 22, fontWeight: 700, marginLeft: "auto", marginRight: "auto" }}>Topics for you</Text>
         <Pressable style={styles.filterButton} onPress={() => setFilterModalVisible(true)}>
           <Ionicons name="filter-outline" size={24} color="#FFFFFF80" />
         </Pressable>

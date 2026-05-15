@@ -21,7 +21,6 @@ async function dbInsertTopic(title: String, original_title: String, authors: Str
                 source_date: date // must be form 'YYYY-MM-DD'
             }
         )
-        console.log(res);
     } catch (e) {
         console.error(e);
     }
@@ -31,7 +30,6 @@ async function dbInsertTopic(title: String, original_title: String, authors: Str
 async function dbGetTopic(id: String) {
     try {
         const res = await sb.from("Topics").select().eq("id", id.toLowerCase());
-        console.log(res);
         return res;
     } catch (e) {
         console.error(e)
