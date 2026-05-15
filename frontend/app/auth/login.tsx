@@ -41,8 +41,8 @@ export default function Index() {
           <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log In</Text>
         </Pressable>
         <Text style={{ color: '#FFFFFF80', fontSize: 14, marginTop: 10 }}>By continuing, you agree to the Privacy Policy and Terms of Service.</Text>
-        <Pressable onPress={onSignUp} style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 30, position: 'absolute', bottom: 80, left: 20 }}>
-          <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Don't have an account yet? Sign up here</Text>
+        <Pressable onPress={onSignUp}>
+          <Text style={{ fontWeight: 400, fontSize: 16, color: '#FFFFFF80' }}>Don't have an account yet? <Text style={{ fontWeight: 400, color: '#FFFFFF' }}>Sign up here</Text></Text>
         </Pressable>
       </View>
     </View>
