@@ -39,13 +39,15 @@ async function dbGetTopic(id: String) {
 }
 
 // Get n topics that the user hasn't seen from the database
-async function dbGetN(uid: String, n: number, categories: string[]) {
+async function dbGetN(uid: String, offset: number, n: number, categories: string[]) {
     try { 
-        let userViews = await sb.from("UserViews").select("topic_id").eq("user_id", uid)
+        let userViews = await sb.from("views").select("topic_id").eq("user_id", uid)
 
         const viewedIds = (userViews.data ?? []).map((r: any) => r.topic_id);
 
-        let topics_query = sb.from("Topics").select("*").limit(Math.floor(n));
+        offset = Math.floor(offset);
+        n = Math.floor(n);
+        let topics_query = sb.from("Topics").select().order("created_at", {ascending: false, nullsFirst: false}).range(offset, offset + n - 1);
 
         if (viewedIds.length > 0) {
             topics_query = topics_query.not("id", "in", `(${viewedIds.join(",")})`);
@@ -83,16 +85,26 @@ async function dbGetCategories() {
 }
 
 async function dbGetLiked(userId: string, topicId: string) {
-    console.log("uid: " + userId + " tid: " + topicId)
     try {
         const {data, error} = await sb.from("likes").select().eq("user_id", userId).eq("topic_id", topicId);
         if (error !== null) {
             alert("Error fetching like status: " + error);
-        } else if (data.length === 1) {
+            return;
+        } 
+        dbAddView(userId, topicId);
+        if (data.length === 1) {
             return true;
         } else {
             return false;
         }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function dbAddView(userId: string, topicId: string) {
+    try {
+        const {error} = await sb.from("views").upsert({user_id: userId, topic_id: topicId});
     } catch (e) {
         console.error(e);
     }
@@ -116,11 +128,8 @@ async function dbGetUserLikes(userId: string) {
         if (error !== null) {
             alert("Error fetching liked topics: " + error);
         } else {
-            let ids = Array();
-            for (let i = 0; i < data.length; i++) {
-                ids[i] = data[i].topic_id;
-            }
-            const res = await sb.from("Topics").select().in("id", ids);
+            const likedIds = data.map((r: any) => r.topic_id);
+            const res = await sb.from("Topics").select().in("id", likedIds);
             return res.data;
         }
     } catch (e) {

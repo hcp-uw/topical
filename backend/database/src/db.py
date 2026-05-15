@@ -16,12 +16,12 @@ def dbInsertTopic(title: str, original_title: str, authors: str, summary: str,
                    source_link: str, category: str, source_date : str):
     try:
         res = sb.table("Topics").insert({
-            "title": title.lower(), 
-            "original_title": original_title.lower(),
-            "authors": authors.lower(), 
+            "title": title, 
+            "original_title": original_title,
+            "authors": authors, 
             "summary": summary, 
             "source_link": source_link, 
-            "category": category.lower(),
+            "category": category,
             "source_date": source_date
         }).execute()
         print(res)

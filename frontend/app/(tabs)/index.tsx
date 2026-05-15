@@ -9,7 +9,10 @@ import { styles } from "@/styles";
 import { authCurSession } from "@/database/auth";
 import { User } from "@supabase/supabase-js";
 
+
 export default function Index() {
+  const RESULTS_PER_PAGE = 10;
+
   interface articleData {
     title: string,
     authors: string,
@@ -27,6 +30,7 @@ export default function Index() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [offset, setOffset] = useState<number>(0);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -53,7 +57,8 @@ export default function Index() {
     try {
       const u = await authCurSession(); 
       setUser(u);
-      const res = await dbGetN(u && u.id ? u.id : "null", 10, selectedCategories);
+      const res = await dbGetN(u && u.id ? u.id : "null", offset, RESULTS_PER_PAGE, selectedCategories);
+      setOffset(offset + RESULTS_PER_PAGE);
 
       // set articles state from response data (handle null)
       if (res && res.data) {
