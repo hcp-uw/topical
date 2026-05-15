@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
         gap: 36,
     },
     articleTitle: {
-        width: "85%",
+        // width: "85%",
         fontSize: 16,
         fontWeight: 700,
         color: '#ffffff',

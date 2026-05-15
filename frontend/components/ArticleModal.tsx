@@ -46,7 +46,7 @@ export default function ArticleModal({ title, summary, date, source, sourceLink,
                 : 
                 <></>
                 }
-                <Text style={{ color: '#A4A4A5', fontSize: 13, fontWeight: 700 }}>{date} • {source}</Text>
+                <Text style={{ color: '#A4A4A5', fontSize: 13, fontWeight: 700, width: '70%' }}>{date} • {source}</Text>
             </View>
             <Pressable onPress={() => console.log(`Open ${sourceLink} in browser`)} style={styles.sourceButton}>
                 <View style={styles.sourceContainer}>
