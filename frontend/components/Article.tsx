@@ -20,7 +20,7 @@ export default function Article({ title, field, date, source }: Props) {
         <Pressable style={styles.articleField}>
           <Text style={{color: '#A4A4A5', fontSize: 13, fontWeight: 700}}>{field}</Text>
         </Pressable>
-        <Text style={{color: '#A4A4A5', fontSize: 13, fontWeight: 700}}>{date} • {source}</Text>
+        <Text style={{color: '#A4A4A5', fontSize: 13, fontWeight: 700}}>{date} • {source.length > 15 ? source.slice(0, 15) + "..." : source}</Text>
       </View>
     </View>
   );

@@ -77,8 +77,8 @@ export default function Search() {
       <ScrollView style={styles.mainBody} contentContainerStyle={{ alignItems: 'center', gap: 10 }} showsVerticalScrollIndicator={false}>
         { articles === null ?
           <View style={styles.splash}>
-            <Text style={{ color: '#FFFFFF4D', fontSize: 60, fontWeight: 700 }}>🧫</Text>
-            <Text style={{ color: '#FFFFFF4D', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>Did you know: A teaspoon of soil contains more living organisms than there are people on Earth</Text>
+            {/* <Text style={{ color: '#FFFFFF4D', fontSize: 60, fontWeight: 700 }}>🧫</Text>
+            <Text style={{ color: '#FFFFFF4D', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>Did you know: A teaspoon of soil contains more living organisms than there are people on Earth</Text> */}
           </View> : 
           articles.map((article, index) => (
           <Pressable style={{ width: "100%" }} key={index} onPress={() => onArticleClick(article)}>
