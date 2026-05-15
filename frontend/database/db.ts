@@ -83,6 +83,7 @@ async function dbGetCategories() {
 }
 
 async function dbGetLiked(userId: string, topicId: string) {
+    console.log("uid: " + userId + " tid: " + topicId)
     try {
         const {data, error} = await sb.from("likes").select().eq("user_id", userId).eq("topic_id", topicId);
         if (error !== null) {
@@ -115,7 +116,12 @@ async function dbGetUserLikes(userId: string) {
         if (error !== null) {
             alert("Error fetching liked topics: " + error);
         } else {
-            return data;
+            let ids = Array();
+            for (let i = 0; i < data.length; i++) {
+                ids[i] = data[i].topic_id;
+            }
+            const res = await sb.from("Topics").select().in("id", ids);
+            return res.data;
         }
     } catch (e) {
         console.error(e);

@@ -41,7 +41,7 @@ export default function ArticleModal({ title, summary, date, source, sourceLink,
                 { loggedIn ? 
                 <Pressable onPress={() => onLike()} style={styles.saveButton}>
                     <Ionicons name={liked ? "heart" : "heart-outline"} size={16} color="#FFFFFF80" /> 
-                    <Text style={{ color: '#A4A4A5' }}>Like</Text>
+                    <Text style={{ color: '#A4A4A5' }}>{liked ? "Liked" : "Like"}</Text>
                 </Pressable>
                 : 
                 <></>
