@@ -62,9 +62,12 @@ async function dbGetN(uid: String, offset: number, n: number, categories: string
     }
 }
 
-async function dbSearch(searchTerm: String) {
+async function dbSearchN(searchTerm: String, offset: number, n: number) {
     try {
-        const res = await sb.from("Topics").select().or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
+        const res = await sb.from("Topics").select()
+            .or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
+            .order("created_at", {ascending: false, nullsFirst: false})
+            .range(offset, offset + n - 1);
 
         return res;
     } catch (e) {
@@ -136,4 +139,4 @@ async function dbGetUserLikes(userId: string) {
 }
 
 
-export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearch, dbGetCategories, dbGetLiked, dbSetLiked, dbGetUserLikes}
+export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearchN, dbGetCategories, dbGetLiked, dbSetLiked, dbGetUserLikes}
