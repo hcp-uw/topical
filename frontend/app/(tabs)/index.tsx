@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Text, View, Modal, Pressable, StyleSheet, ScrollView, NativeScrollEvent } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { Text, View, Modal, Pressable, StyleSheet, ScrollView, NativeScrollEvent, RefreshControl } from "react-native";
 import Article from "@/components/Article";
 import ArticleModal from "@/components/ArticleModal";
 import { LinearGradient } from "expo-linear-gradient";
@@ -31,34 +31,49 @@ export default function Index() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [offset, setOffset] = useState<number>(0);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setOffset(0);
+    await fetchTopics();
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const categories = await dbGetCategories();
-
-        if (categories && categories.data) {
-          const categoriesArr = []
-          for (const item of categories.data) {
-            categoriesArr.push(item);
-          }
-          setCategories(categoriesArr)
-        }
-      } catch(e) {
-        console.error(e)
-      }
+    const fetchAll = async () => {
+      await checkAuth();
+      fetchTopics();
+      fetchCategories();
     }
 
-    fetchTopics();
-    fetchCategories();
+    fetchAll();
   }, []);
+
+  const checkAuth = async () => {
+    const u = await authCurSession(); 
+    setUser(u); 
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const categories = await dbGetCategories();
+
+      if (categories && categories.data) {
+        const categoriesArr = []
+        for (const item of categories.data) {
+          categoriesArr.push(item);
+        }
+        setCategories(categoriesArr)
+      }
+    } catch(e) {
+      console.error(e)
+    }
+  }
 
   const fetchTopics = async () => {
     try {
-      const u = await authCurSession(); 
-      setUser(u);
-      const res = await dbGetN(u && u.id ? u.id : "null", offset, RESULTS_PER_PAGE, selectedCategories);
-      setOffset(offset + RESULTS_PER_PAGE);
+      const res = await dbGetN(user && user.id ? user.id : "null", offset, RESULTS_PER_PAGE, selectedCategories);
 
       // set articles state from response data (handle null)
       if (res && res.data) {
@@ -72,7 +87,8 @@ export default function Index() {
           source_link: t.source_link,
           topic_id: t.id
         }));
-        setArticles(articles.concat(formatted));
+        setArticles(offset === 0 ? formatted : articles.concat(formatted));
+        setOffset(offset + RESULTS_PER_PAGE);
       }
     } catch(e) {
       console.error(e)
@@ -99,7 +115,7 @@ export default function Index() {
   }
 
   const isCloseToBottom = ({layoutMeasurement, contentOffset, contentSize}: NativeScrollEvent) => {
-    const paddingToBottom = 50;
+    const paddingToBottom = 250;
     return layoutMeasurement.height + contentOffset.y >=
       contentSize.height - paddingToBottom;
   };
@@ -118,7 +134,10 @@ export default function Index() {
           if (isCloseToBottom(nativeEvent)) {
             fetchTopics();
           }
-        }}>
+        }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh}/>
+        }>
         { articles === null ?
           <></> : 
           articles.map((article, index) => (
@@ -148,27 +167,27 @@ export default function Index() {
           <Pressable onPress={() => setArticleModalVisible(false)} style={{ position: 'absolute', top: 120, right: 20 }}>
             <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
           </Pressable>
-        </Modal>
-        <Modal visible={filterModalVisible} style={{ width: "100%" }} animationType="slide" transparent={true}>
-          <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 95, height: 800, borderRadius: 30 }} />
-          <ScrollView style={styles.modalContainer} contentContainerStyle={{flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", flexWrap: "wrap"}}>
-            { categories === null ?
-              <></> : 
-              categories.map((category, index) => (
-                <Pressable style={[styles.sourceButton, { width: "auto" }, selectedCategories.includes(category) ? { borderWidth: 1, borderColor: "white" } : {}]} onPress={() => toggleCategory(category)} key={index}>
-                  <Text style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>{category}</Text>
-                </Pressable>
-              ))
-            }
-          </ScrollView>
-          <Pressable onPress={() => setFilterModalVisible(false)} style={{ position: 'absolute', top: 120, right: 20 }}>
-            <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
-          </Pressable>
-          <Pressable style={[styles.sourceButton, { width: "auto", position: "absolute", bottom: 30, left: "50%", transform: "translate(-50%)"}]} onPress={() => onFilterSave()}>
-            <Text style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>Save</Text>
-          </Pressable>
-        </Modal>
+        </Modal>        
       </ScrollView>
+      <Modal visible={filterModalVisible} style={{ width: "100%" }} animationType="slide" transparent={true}>
+        <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
+        <ScrollView style={styles.modalContainer} contentContainerStyle={{flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", flexWrap: "wrap"}}>
+          { categories === null ?
+            <></> : 
+            categories.map((category, index) => (
+              <Pressable style={[styles.sourceButton, { width: "auto" }, selectedCategories.includes(category) ? { borderWidth: 1, borderColor: "white" } : {}]} onPress={() => toggleCategory(category)} key={index}>
+                <Text style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>{category}</Text>
+              </Pressable>
+            ))
+          }
+        </ScrollView>
+        <Pressable onPress={() => setFilterModalVisible(false)} style={{ position: 'absolute', top: 160, right: 20 }}>
+          <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
+        </Pressable>
+        <Pressable style={[styles.sourceButton, { width: "auto", position: "absolute", bottom: 30, left: "50%", transform: "translate(-50%)"}]} onPress={() => onFilterSave()}>
+          <Text style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>Save</Text>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

@@ -6,8 +6,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { User } from "@supabase/auth-js";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from 'expo-router';
-import React, { useEffect, useState } from "react";
-import { Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Image, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 
 export default function Profile() {
     interface articleData {
@@ -24,6 +24,13 @@ export default function Profile() {
     const [liked, setLiked] = useState<articleData[]>([]);
     const [modalArticle, setModalArticle] = useState<articleData | null>(null);
     const [articleModalVisible, setArticleModalVisible] = useState(false);
+    const [refreshing, setRefreshing] = React.useState(false);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchLiked(user);
+        setRefreshing(false);
+    }, []);
 
     useEffect(() => {
         checkAuthAndFetchLiked();
@@ -32,6 +39,10 @@ export default function Profile() {
     const checkAuthAndFetchLiked = async () => {
         const u = await authCurSession();
         setUser(u);
+        fetchLiked(u);
+    }
+
+    const fetchLiked = async (u: User | null) => {
         if (u) {
             const data = await dbGetUserLikes(u.id);
             if (data) {
@@ -99,7 +110,10 @@ export default function Profile() {
                     <Text style={styles.listHeaderTitle}>Saved topics</Text>
                 </View>
 
-                <ScrollView contentContainerStyle={styles.articlesList} showsVerticalScrollIndicator={false}>
+                <ScrollView contentContainerStyle={styles.articlesList} showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh}/>
+                    }>
                     {liked.map((article, index) => (
                         <Pressable style={{ width: "100%" }} key={index} onPress={() => onArticleClick(article)}>
                             <Article 
