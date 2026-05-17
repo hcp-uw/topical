@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
         left: 0, 
         right: 0, 
         top: 95, 
-        height: 800, 
+        height: "100%", 
         borderRadius: 30 
     },
     topSection: {
