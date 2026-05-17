@@ -4,14 +4,16 @@ FastAPI backend for Topical - Academic Paper Summarization App
 
 import os
 import sys
+import json
 import random
 import datetime
 import re
+import asyncio
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Union
 
@@ -72,8 +74,8 @@ app.add_middleware(
 # - "ollama"
 # - "groq" (recommended)
 
-provider = os.getenv("LLM_PROVIDER", "ollama")
-model_name = "llama-3.1-8b-instant" if provider == "groq" else "mistral"
+provider = os.getenv("LLM_PROVIDER", "groq")
+model_name = "llama-3.3-70b-versatile" if provider == "groq" else "mistral"
 llm_service = LLMService(provider=provider, model_name=model_name)
 file_reader = FileReaderService()
 
@@ -83,14 +85,14 @@ if SCRAPER_AVAILABLE:
     html_scraper = HTMLpull()
 
 # Set to False to disable saving summaries to the database
-_save_to_db = os.getenv("TOPICAL_SAVE_TO_DB", "1").lower() in ("1", "true", "yes")
+_save_to_db = os.getenv("TOPICAL_SAVE_TO_DB", "0").lower() in ("1", "true", "yes")
 
 
 def _log_db_save_status():
     """Log at startup why DB save is or isn't active (helps debug 'not saving')."""
     import logging
     log = logging.getLogger("uvicorn")
-    raw = os.getenv("TOPICAL_SAVE_TO_DB", "1")
+    raw = os.getenv("TOPICAL_SAVE_TO_DB", "0")
     if not _save_to_db:
         log.info(f"DB save: DISABLED (TOPICAL_SAVE_TO_DB={raw!r}; use 1/true/yes to enable)")
         return
@@ -117,6 +119,7 @@ class ImageInfo(BaseModel):
 
 class SummaryResponse(BaseModel):
     summary: str
+    friendly_title: Optional[str] = None
     model: str
     images: Optional[List[ImageInfo]] = None
 
@@ -138,6 +141,7 @@ class FetchArticlesRequest(BaseModel):
 class ArticleSummaryItem(BaseModel):
     filename: str
     title: str
+    friendly_title: Optional[str] = None
     summary: str
     model: str
     url: Optional[str] = None
@@ -150,6 +154,7 @@ class FetchUrlRequest(BaseModel):
 
 class FetchUrlResponse(BaseModel):
     title: str
+    friendly_title: Optional[str] = None
     url: str
     summary: str
     model: str
@@ -157,6 +162,7 @@ class FetchUrlResponse(BaseModel):
 
 class RandomArticleResponse(BaseModel):
     filename: str
+    friendly_title: Optional[str] = None
     summary: str
     model: str
     images: Optional[List[ImageInfo]] = None
@@ -236,9 +242,145 @@ def _extract_abstract(text: str, max_chars: int = 4000) -> str:
     return abstract_text
 
 
+SCHEDULED_CATEGORIES = ["cs", "math", "physics", "astro-ph", "q-bio", "stat"]
+SCHEDULED_PAPERS_PER_CATEGORY = 20
+SUMMARIZE_BATCH_SIZE = 5  # papers processed per hourly tick
+
+
+def _pending_dir() -> Path:
+    """Directory holding fetched-but-not-yet-summarized abstracts (the queue)."""
+    p = file_reader.get_data_dir_path() / "pending"
+    p.mkdir(exist_ok=True)
+    return p
+
+
+async def _scheduled_fetch():
+    """Weekly job: fetch arXiv abstracts into the pending queue. Does NOT call the LLM."""
+    logger = logging.getLogger("uvicorn")
+    if not SCRAPER_AVAILABLE or not html_scraper:
+        logger.warning("Scraper unavailable, skipping scheduled fetch.")
+        return
+
+    logger.info("Scheduled weekly fetch starting...")
+    source_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    pending = _pending_dir()
+    total_queued = 0
+
+    for subject in SCHEDULED_CATEGORIES:
+        logger.info(f"Fetching {SCHEDULED_PAPERS_PER_CATEGORY} articles for '{subject}'...")
+        try:
+            result = html_scraper.fetch_arxiv_abstracts_bulk(
+                subject=subject,
+                year=None,
+                month=None,
+                max_papers=SCHEDULED_PAPERS_PER_CATEGORY,
+                data_dir=str(pending),
+                delay=0.5,
+            )
+            # Write a JSON sidecar per abstract so the summarizer has the metadata it needs.
+            for item in result:
+                sidecar = pending / (Path(item["filename"]).stem + ".json")
+                with open(sidecar, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "filename": item["filename"],
+                        "title": item.get("title") or item["filename"],
+                        "authors": item.get("authors") or "Unknown",
+                        "source_link": item.get("source_link") or "",
+                        "category": subject,
+                        "source_date": source_date,
+                    }, f)
+            total_queued += len(result)
+            logger.info(f"Queued {len(result)} abstracts for '{subject}'.")
+        except Exception as e:
+            logger.error(f"Scheduled fetch failed for '{subject}': {e}")
+
+    logger.info(f"Scheduled weekly fetch complete. Total queued: {total_queued}.")
+
+
+async def _scheduled_summarize_pending():
+    """Hourly job: summarize up to SUMMARIZE_BATCH_SIZE pending abstracts and save to DB."""
+    logger = logging.getLogger("uvicorn")
+    pending = _pending_dir()
+    sidecars = sorted(pending.glob("*.json"))
+    if not sidecars:
+        return
+
+    batch = sidecars[:SUMMARIZE_BATCH_SIZE]
+    logger.info(f"Summarizing {len(batch)} pending abstract(s) (queue size: {len(sidecars)})...")
+
+    for sidecar_path in batch:
+        abstract_path = None
+        try:
+            with open(sidecar_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            abstract_path = pending / meta["filename"]
+            if not abstract_path.exists():
+                logger.warning(f"Abstract file missing for {sidecar_path.name}, dropping.")
+                sidecar_path.unlink(missing_ok=True)
+                continue
+
+            with open(abstract_path, "r", encoding="utf-8") as f:
+                text = f.read()
+
+            original_title = meta["title"]
+            llm_result = await llm_service.generate_summary(text, None, title=original_title)
+            summary_text = llm_result["summary"]
+            friendly_title = llm_result.get("friendly_title") or None
+            _save_summary_to_db(
+                title=friendly_title or original_title,
+                original_title=original_title,
+                authors=meta["authors"],
+                summary=summary_text,
+                source_link=meta["source_link"],
+                category=meta["category"] or "Uncategorized",
+                source_date=meta["source_date"],
+            )
+            abstract_path.unlink(missing_ok=True)
+            sidecar_path.unlink(missing_ok=True)
+        except Exception as e:
+            logger.warning(f"Summarize failed for {sidecar_path.name}: {e}")
+            # Leave the sidecar/abstract in place so the next tick can retry.
+
+    logger.info("Hourly summarize tick complete.")
+
+
 @app.on_event("startup")
-def _startup_log_db():
+async def _startup_scheduler():
     _log_db_save_status()
+
+    # Use AsyncIOScheduler so the job runs on the running uvicorn event loop.
+    # BackgroundScheduler runs jobs in a worker thread that has no event loop,
+    # which made `asyncio.get_event_loop()` raise RuntimeError on Python 3.12+
+    # (and immediately under uvloop) when the cron fired.
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    scheduler = AsyncIOScheduler(event_loop=asyncio.get_running_loop())
+    # Weekly: fetch abstracts into the pending queue (no LLM calls here).
+    scheduler.add_job(
+        _scheduled_fetch,
+        trigger="cron",
+        day_of_week="mon",
+        hour=6,
+        minute=0,
+        id="weekly_fetch",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=3600,
+    )
+    # Hourly: drain the queue in small batches so we never spike token usage.
+    scheduler.add_job(
+        _scheduled_summarize_pending,
+        trigger="cron",
+        minute=15,
+        id="hourly_summarize",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=600,
+    )
+    scheduler.start()
+    # Keep a reference on the app so the scheduler isn't garbage-collected.
+    app.state.scheduler = scheduler
+    logger = logging.getLogger("uvicorn")
+    logger.info("Scheduler started: weekly fetch (Mon 06:00 UTC), hourly summarize trickle (:15)")
 
 
 @app.get("/")
@@ -266,9 +408,13 @@ async def generate_summary(request: SummaryRequest):
         raise HTTPException(status_code=400, detail="Invalid or missing input text")
     
     try:
-        summary = await llm_service.generate_summary(request.text, request.topic)
+        result = await llm_service.generate_summary(request.text, request.topic)
         model_name = llm_service.get_model_name()
-        return SummaryResponse(summary=summary, model=model_name)
+        return SummaryResponse(
+            summary=result["summary"],
+            friendly_title=result.get("friendly_title") or None,
+            model=model_name,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
@@ -306,19 +452,29 @@ async def summarize_file(request: FileSummaryRequest):
             abstract_text = _extract_abstract(text)
             logger.info(f"Using abstract-only text for summary ({len(abstract_text)} characters)...")
             logger.info(f"Generating summary with {llm_service.provider.value}...")
-            summary = await llm_service.generate_summary(abstract_text, request.topic)
+            result = await llm_service.generate_summary(abstract_text, request.topic)
             model_name = llm_service.get_model_name()
-            logger.info(f"Summary generated: {len(summary)} characters")
-            return SummaryResponse(summary=summary, model=model_name, images=images if images else [])
+            logger.info(f"Summary generated: {len(result['summary'])} characters")
+            return SummaryResponse(
+                summary=result["summary"],
+                friendly_title=result.get("friendly_title") or None,
+                model=model_name,
+                images=images if images else [],
+            )
         else:
             # Read regular text file
             text = file_reader.read_file(request.filename)
             if not text:
                 raise HTTPException(status_code=404, detail=f"File '{request.filename}' not found or empty")
             
-            summary = await llm_service.generate_summary(text, request.topic)
+            result = await llm_service.generate_summary(text, request.topic)
             model_name = llm_service.get_model_name()
-            return SummaryResponse(summary=summary, model=model_name, images=None)
+            return SummaryResponse(
+                summary=result["summary"],
+                friendly_title=result.get("friendly_title") or None,
+                model=model_name,
+                images=None,
+            )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"File '{request.filename}' not found")
     except ValueError as e:
@@ -398,22 +554,30 @@ async def fetch_and_summarize_url(request: FetchUrlRequest):
             )
 
         logger.info(f"Generating summary from arXiv abstract ({url}, {len(text)} chars)...")
-        summary = await llm_service.generate_summary(text, request.topic)
+        result = await llm_service.generate_summary(text, request.topic, title=title)
         model_name = llm_service.get_model_name()
+        summary_text = result["summary"]
+        friendly_title = result.get("friendly_title") or None
 
         source_date = datetime.datetime.now().strftime("%Y-%m-%d")
         if _save_summary_to_db(
-            title=title,
+            title=friendly_title or title,
             original_title=title,
             authors=authors,
-            summary=summary,
+            summary=summary_text,
             source_link=url,
             category=request.topic or "Uncategorized",
             source_date=source_date,
         ):
             logger.info(f"Saved to DB with authors: {authors!r}")
 
-        return FetchUrlResponse(title=title, url=url, summary=summary, model=model_name)
+        return FetchUrlResponse(
+            title=title,
+            friendly_title=friendly_title,
+            url=url,
+            summary=summary_text,
+            model=model_name,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -470,24 +634,27 @@ async def fetch_articles(request: FetchArticlesRequest):
                 fn = item["filename"]
                 try:
                     text = file_reader.read_file(fn)
-                    summary = await llm_service.generate_summary(text, None)
-                    title = item.get("title") or fn
+                    original_title = item.get("title") or fn
+                    result = await llm_service.generate_summary(text, None, title=original_title)
+                    summary_text = result["summary"]
+                    friendly_title = result.get("friendly_title") or None
                     authors = item.get("authors") or "Unknown"
                     source_link = item.get("source_link") or ""
                     if _save_summary_to_db(
-                        title=title,
-                        original_title=title,
+                        title=friendly_title or original_title,
+                        original_title=original_title,
                         authors=authors,
-                        summary=summary,
+                        summary=summary_text,
                         source_link=source_link,
                         category=subject or "Uncategorized",
                         source_date=source_date,
                     ):
-                        logger.info(f"Saved to DB: title={title!r}, authors={authors!r}")
+                        logger.info(f"Saved to DB: title={original_title!r}, authors={authors!r}")
                     return ArticleSummaryItem(
                         filename=fn,
-                        title=title,
-                        summary=summary,
+                        title=original_title,
+                        friendly_title=friendly_title,
+                        summary=summary_text,
                         model=llm_service.get_model_name(),
                         url=source_link or None,
                     )
@@ -562,12 +729,13 @@ async def get_random_article(topic: Optional[str] = None):
             abstract_text = _extract_abstract(text)
             logger.info(f"Using abstract-only text for summary ({len(abstract_text)} characters)...")
             logger.info(f"Generating summary with {llm_service.provider.value}...")
-            summary = await llm_service.generate_summary(abstract_text, topic)
+            result = await llm_service.generate_summary(abstract_text, topic)
             model_name = llm_service.get_model_name()
             
             return RandomArticleResponse(
                 filename=filename,
-                summary=summary,
+                friendly_title=result.get("friendly_title") or None,
+                summary=result["summary"],
                 model=model_name,
                 images=images if images else [],
                 url=None,
@@ -578,9 +746,8 @@ async def get_random_article(topic: Optional[str] = None):
             if not text:
                 raise HTTPException(status_code=404, detail=f"File '{filename}' not found or empty")
             
-            summary = await llm_service.generate_summary(text, topic)
+            result = await llm_service.generate_summary(text, topic)
             model_name = llm_service.get_model_name()
-            # Derive arXiv abs URL from abstract filename when possible
             article_url = None
             if filename.endswith("_abstract.txt"):
                 arxiv_id = filename.replace("_abstract.txt", "").replace("_", "/")
@@ -588,7 +755,8 @@ async def get_random_article(topic: Optional[str] = None):
             
             return RandomArticleResponse(
                 filename=filename,
-                summary=summary,
+                friendly_title=result.get("friendly_title") or None,
+                summary=result["summary"],
                 model=model_name,
                 images=None,
                 url=article_url,
@@ -602,11 +770,6 @@ async def get_random_article(topic: Optional[str] = None):
         logger.error(f"Error getting random article: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting random article: {str(e)}")
 
-
-# Serve frontend from backend/frontend so the correct UI is always used
-frontend_dir = backend_dir / "frontend"
-if frontend_dir.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
