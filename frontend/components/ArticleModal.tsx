@@ -44,8 +44,8 @@ export default function ArticleModal({ title, summary, date, source, sourceLink,
     }
 
     return (
-        <ScrollView style={styles.modalContainer} contentContainerStyle={{ alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
-            <Text style={{ color: 'white', fontSize: 20, fontWeight: 700 }}>{title}</Text>
+        <ScrollView style={styles.modalContainer} contentContainerStyle={{ justifyContent: 'space-between', gap: 20, paddingBottom: 160 }}>
+            <Text style={{ color: 'white', fontSize: 20, fontWeight: 700, width: '90%' }}>{title}</Text>
             <Text style={{ color: '#FFFFFF80', fontSize: 16, fontWeight: 500 }}>{summary}</Text>
             <View style={styles.infoContainer}>
                 { loggedIn ? 
