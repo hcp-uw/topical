@@ -153,7 +153,7 @@ export default function Index() {
           ))
         }
         <Modal visible={articleModalVisible} animationType="slide" transparent={true}>
-          <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
+          <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 95, height: 800, borderRadius: 30 }} />
           <ArticleModal 
             title={modalArticle?.title || "Title not found."}
             summary={modalArticle?.summary || "Summary not found."}
@@ -164,11 +164,10 @@ export default function Index() {
             userId={user?.id || "Not logged in."}
             topicId={modalArticle?.topic_id || "ID not found."}
           />
-          <Pressable onPress={() => setArticleModalVisible(false)} style={{ position: 'absolute', top: 160, right: 20 }}>
+          <Pressable onPress={() => setArticleModalVisible(false)} style={{ position: 'absolute', top: 120, right: 20 }}>
             <Ionicons name="close-outline" size={30} color="#FFFFFF80" /> 
           </Pressable>
-        </Modal>
-        
+        </Modal>        
       </ScrollView>
       <Modal visible={filterModalVisible} style={{ width: "100%" }} animationType="slide" transparent={true}>
         <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />

@@ -71,12 +71,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <Image
-              source={require('../../assets/images/profile.png')}
-              style={{ width: 26, height: 26, borderRadius: 13, opacity: focused ? 1 : 0.5 }}
-            />
+            <Ionicons name={focused ? 'person-sharp' : 'person-outline'} color={color} size={24} />
           ),
         }}
       />

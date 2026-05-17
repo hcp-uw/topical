@@ -2,12 +2,12 @@ import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
     modalContainer: {
-        top: 145,
+        top: 95,
         backgroundColor: '#0000004D',
         paddingTop: 30,
         paddingHorizontal: 30,
         borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
+        borderTopRightRadius: 30
     },
     infoContainer: {
         width: '100%',
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
         gap: 36,
     },
     articleTitle: {
-        width: "85%",
+        // width: "85%",
         fontSize: 16,
         fontWeight: 700,
         color: '#ffffff',
