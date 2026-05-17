@@ -21,7 +21,6 @@ async function dbInsertTopic(title: String, original_title: String, authors: Str
                 source_date: date // must be form 'YYYY-MM-DD'
             }
         )
-        console.log(res);
     } catch (e) {
         console.error(e);
     }
@@ -31,7 +30,6 @@ async function dbInsertTopic(title: String, original_title: String, authors: Str
 async function dbGetTopic(id: String) {
     try {
         const res = await sb.from("Topics").select().eq("id", id.toLowerCase());
-        console.log(res);
         return res;
     } catch (e) {
         console.error(e)
@@ -39,13 +37,15 @@ async function dbGetTopic(id: String) {
 }
 
 // Get n topics that the user hasn't seen from the database
-async function dbGetN(uid: String, n: number, categories: string[]) {
+async function dbGetN(uid: String, offset: number, n: number, categories: string[]) {
     try { 
-        let userViews = await sb.from("UserViews").select("topic_id").eq("user_id", uid)
+        let userViews = await sb.from("views").select("topic_id").eq("user_id", uid)
 
         const viewedIds = (userViews.data ?? []).map((r: any) => r.topic_id);
 
-        let topics_query = sb.from("Topics").select("*").limit(Math.floor(n));
+        offset = Math.floor(offset);
+        n = Math.floor(n);
+        let topics_query = sb.from("Topics").select().order("created_at", {ascending: false, nullsFirst: false}).range(offset, offset + n - 1);
 
         if (viewedIds.length > 0) {
             topics_query = topics_query.not("id", "in", `(${viewedIds.join(",")})`);
@@ -62,9 +62,12 @@ async function dbGetN(uid: String, n: number, categories: string[]) {
     }
 }
 
-async function dbSearch(searchTerm: String) {
+async function dbSearchN(searchTerm: String, offset: number, n: number) {
     try {
-        const res = await sb.from("Topics").select().or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
+        const res = await sb.from("Topics").select()
+            .or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
+            .order("created_at", {ascending: false, nullsFirst: false})
+            .range(offset, offset + n - 1);
 
         return res;
     } catch (e) {
@@ -82,5 +85,58 @@ async function dbGetCategories() {
     }
 }
 
+async function dbGetLiked(userId: string, topicId: string) {
+    try {
+        const {data, error} = await sb.from("likes").select().eq("user_id", userId).eq("topic_id", topicId);
+        if (error !== null) {
+            alert("Error fetching like status: " + error);
+            return;
+        } 
+        dbAddView(userId, topicId);
+        if (data.length === 1) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
 
-export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearch, dbGetCategories}
+async function dbAddView(userId: string, topicId: string) {
+    try {
+        const {error} = await sb.from("views").upsert({user_id: userId, topic_id: topicId});
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function dbSetLiked(userId: string, topicId: string, status: boolean) {
+    try {
+        if (status) {
+            const {error} = await sb.from("likes").upsert({user_id: userId, topic_id: topicId});
+        } else {
+            const {error} = await sb.from("likes").delete().eq("user_id", userId).eq("topic_id", topicId);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function dbGetUserLikes(userId: string) {
+    try {
+        const {data, error} = await sb.from("likes").select("topic_id").eq("user_id", userId);
+        if (error !== null) {
+            alert("Error fetching liked topics: " + error);
+        } else {
+            const likedIds = data.map((r: any) => r.topic_id);
+            const res = await sb.from("Topics").select().in("id", likedIds);
+            return res.data;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+
+export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearchN, dbGetCategories, dbGetLiked, dbSetLiked, dbGetUserLikes}

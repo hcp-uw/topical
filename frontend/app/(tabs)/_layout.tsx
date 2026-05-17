@@ -1,8 +1,27 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Image } from 'react-native';
+import { useEffect } from 'react';
+import { isAuthenticated } from '@/app/auth/auth';
+import { authCurSession } from '@/database/auth';
 
 export default function TabLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const loginRedirect = async () => {
+      const u = await authCurSession();
+      if (u == null) {
+        const timeout = setTimeout(() => {
+          router.replace('/auth/login');
+        }, 0);
+        return () => clearTimeout(timeout);
+      }
+    }
+     
+    loginRedirect();
+  }, [router]);
+
   return (
     <Tabs
       screenOptions={{
@@ -52,12 +71,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <Image
-              source={require('../../assets/images/profile.png')}
-              style={{ width: 26, height: 26, borderRadius: 13, opacity: focused ? 1 : 0.5 }}
-            />
+            <Ionicons name={focused ? 'person-sharp' : 'person-outline'} color={color} size={24} />
           ),
         }}
       />
