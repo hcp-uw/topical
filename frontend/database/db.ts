@@ -7,25 +7,6 @@ if (sbKey === undefined) {
 }
 const sb = createClient(sbUrl, sbKey);
 
-// Add a new topic to the database with its title, authors, summary, source and category.
-async function dbInsertTopic(title: String, original_title: String, authors: String, summary: String, source_link: String, category: String, date: String) {
-    try {
-        const res = await sb.from("Topics").insert(
-            {
-                title: title.toLowerCase(), 
-                original_title: original_title.toLowerCase(), 
-                authors: authors.toLowerCase(), 
-                summary: summary, 
-                source_link: source_link, 
-                category: category.toLowerCase(),
-                source_date: date // must be form 'YYYY-MM-DD'
-            }
-        )
-    } catch (e) {
-        console.error(e);
-    }
-}
-
 // Get specific topic by ID
 async function dbGetTopic(id: String) {
     try {
@@ -139,4 +120,4 @@ async function dbGetUserLikes(userId: string) {
 }
 
 
-export {sb, dbInsertTopic, dbGetTopic, dbGetN, dbSearchN, dbGetCategories, dbGetLiked, dbSetLiked, dbGetUserLikes}
+export {sb, dbGetTopic, dbGetN, dbSearchN, dbGetCategories, dbGetLiked, dbSetLiked, dbGetUserLikes}

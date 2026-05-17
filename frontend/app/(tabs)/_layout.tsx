@@ -2,7 +2,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs, useRouter } from 'expo-router';
 import { Image } from 'react-native';
 import { useEffect } from 'react';
-import { isAuthenticated } from '@/app/auth/auth';
 import { authCurSession } from '@/database/auth';
 
 export default function TabLayout() {

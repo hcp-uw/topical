@@ -7,6 +7,7 @@ import { User } from "@supabase/auth-js";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from "react";
+import {styles} from "@/styles"
 import { Image, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 
 export default function Profile() {
@@ -84,7 +85,6 @@ export default function Profile() {
             <LinearGradient
                 colors={['#00156b', '#0F0F0F', '#0F0F0F']}
                 style={{ position: 'absolute', left: 0, right: 0, top: -100, height: 1000, zIndex: -10 }}
-                // style={StyleSheet.absoluteFillObject}
             />
 
             {/* Top part */}
@@ -126,9 +126,8 @@ export default function Profile() {
                         </Pressable>
                         ))}
                 </ScrollView>
-
                 <Modal visible={articleModalVisible} animationType="slide" transparent={true}>
-                    <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
+                    <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={styles.modalGradient} />
                     <ArticleModal 
                         title={modalArticle?.title || "Title not found."}
                         summary={modalArticle?.summary || "Summary not found."}
@@ -159,76 +158,3 @@ export default function Profile() {
     </>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#0000004D',
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-    },
-    topSection: {
-        paddingTop: 10,
-        paddingHorizontal: 20,
-        alignItems: 'center',
-        paddingBottom: 30,
-    },
-    backButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'flex-start',
-        marginTop: 10,
-    },
-    backText: {
-        color: '#A4A4A5',
-        fontSize: 18,
-        fontWeight: '600',
-        marginLeft: 4,
-    },
-    profileHeader: {
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    profileImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 60,
-        marginBottom: 20,
-    },
-    nameText: {
-        color: '#ffffff',
-        fontSize: 28,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    joinText: {
-        color: '#7b7b8b',
-        fontSize: 18,
-        fontWeight: '600',
-    },
-    bottomSection: {
-        flex: 1,
-        backgroundColor: '#0000004D',
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        paddingHorizontal: 15,
-        paddingTop: 20,
-    },
-    listHeaderContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        marginBottom: 20,
-    },
-    listHeaderTitle: {
-        color: '#FFFFFF80',
-        fontSize: 22,
-        fontWeight: 'bold',
-    },
-    articlesList: {
-        alignItems: 'center',
-        gap: 15,
-        paddingBottom: 20,
-    }
-});

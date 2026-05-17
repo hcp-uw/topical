@@ -107,6 +107,67 @@ const styles = StyleSheet.create({
       width: '70%',
       alignItems: 'center',
       gap: 15,
+    },
+    modalGradient: { 
+        position: 'absolute', 
+        left: 0, 
+        right: 0, 
+        top: 95, 
+        height: 800, 
+        borderRadius: 30 
+    },
+    topSection: {
+        paddingTop: 10,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        paddingBottom: 30,
+    },
+    profileHeader: {
+        alignItems: 'center',
+        marginTop: 20,
+    },
+    profileImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 60,
+        marginBottom: 20,
+    },
+    nameText: {
+        color: '#ffffff',
+        fontSize: 28,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    joinText: {
+        color: '#7b7b8b',
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    bottomSection: {
+        flex: 1,
+        backgroundColor: '#0000004D',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        paddingHorizontal: 15,
+        paddingTop: 20,
+        width: "100%"
+    },
+    listHeaderContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        marginBottom: 20,
+    },
+    listHeaderTitle: {
+        color: '#FFFFFF80',
+        fontSize: 22,
+        fontWeight: 'bold',
+    },
+    articlesList: {
+        alignItems: 'center',
+        gap: 15,
+        paddingBottom: 20,
     }
 });
 

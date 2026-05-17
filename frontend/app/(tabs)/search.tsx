@@ -126,7 +126,7 @@ export default function Search() {
           </Pressable>
         ))}
         <Modal visible={articleModalVisible} animationType="slide" transparent={true}>
-          <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
+          <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={styles.modalGradient} />
           <ArticleModal 
             title={modalArticle?.title || "Title not found."}
             summary={modalArticle?.summary || "Summary not found."}
