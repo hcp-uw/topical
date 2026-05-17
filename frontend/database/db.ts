@@ -12,12 +12,12 @@ async function dbInsertTopic(title: String, original_title: String, authors: Str
     try {
         const res = await sb.from("Topics").insert(
             {
-                title: title.toLowerCase(), 
-                original_title: original_title.toLowerCase(), 
-                authors: authors.toLowerCase(), 
+                title: title, 
+                original_title: original_title, 
+                authors: authors, 
                 summary: summary, 
                 source_link: source_link, 
-                category: category.toLowerCase(),
+                category: category,
                 source_date: date // must be form 'YYYY-MM-DD'
             }
         )
