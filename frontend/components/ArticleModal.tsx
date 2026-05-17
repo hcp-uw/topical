@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, Linking } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { styles } from '@/styles';
 import { dbGetLiked, dbSetLiked } from '@/database/db';
@@ -17,6 +17,16 @@ type Props = {
 
 export default function ArticleModal({ title, summary, date, source, sourceLink, loggedIn, userId, topicId }: Props) {
     const [liked, setLiked] = useState(false);
+
+    const openSource = async () => {
+        const supported = await Linking.canOpenURL(sourceLink);
+
+        if (supported) {
+            await Linking.openURL(sourceLink);
+        } else {
+            console.error(`Don't know how to open this URL: ${sourceLink}`);
+        }
+    };
 
     useEffect(() => {
         async function getLike() {
@@ -36,19 +46,19 @@ export default function ArticleModal({ title, summary, date, source, sourceLink,
     return (
         <ScrollView style={styles.modalContainer} contentContainerStyle={{ alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
             <Text style={{ color: 'white', fontSize: 20, fontWeight: 700 }}>{title}</Text>
-            <Text style={{ color: '#FFFFFF50', fontSize: 16, fontWeight: 700 }}>{summary}</Text>
+            <Text style={{ color: '#FFFFFF80', fontSize: 16, fontWeight: 500 }}>{summary}</Text>
             <View style={styles.infoContainer}>
                 { loggedIn ? 
-                <Pressable onPress={() => onLike()} style={styles.saveButton}>
+                <Pressable onPress={() => onLike()} style={[styles.saveButton, {borderColor: (liked ? '#1eff29c7' : '#FFFFFF10')}]}>
                     <Ionicons name={liked ? "heart" : "heart-outline"} size={16} color="#FFFFFF80" /> 
                     <Text style={{ color: '#A4A4A5' }}>{liked ? "Liked" : "Like"}</Text>
                 </Pressable>
                 : 
                 <></>
                 }
-                <Text style={{ color: '#A4A4A5', fontSize: 13, fontWeight: 700 }}>{date} • {source}</Text>
+                <Text style={{ color: '#A4A4A5', fontSize: 13, fontWeight: 700, width: '70%' }}>{date} • {source}</Text>
             </View>
-            <Pressable onPress={() => console.log(`Open ${sourceLink} in browser`)} style={styles.sourceButton}>
+            <Pressable onPress={() => openSource()} style={styles.sourceButton}>
                 <View style={styles.sourceContainer}>
                     <Text style={{ color: 'white', fontSize: 16, fontWeight: 700 }}>Visit source</Text>
                     <Ionicons name="chevron-forward-outline" size={12} color="#FFFFFF80" /> 

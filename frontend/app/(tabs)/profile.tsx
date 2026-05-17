@@ -71,17 +71,13 @@ export default function Profile() {
         { user != null ? 
         <View style={styles.container}>
             <LinearGradient
-                colors={['#07133f', '#07133f', '#090a10']}
-                style={StyleSheet.absoluteFillObject}
+                colors={['#00156b', '#0F0F0F', '#0F0F0F']}
+                style={{ position: 'absolute', left: 0, right: 0, top: -100, height: 1000, zIndex: -10 }}
+                // style={StyleSheet.absoluteFillObject}
             />
 
             {/* Top part */}
             <View style={styles.topSection}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={24} color="#A4A4A5" />
-                    <Text style={styles.backText}>Back</Text>
-                </Pressable>
-
                 <View style={styles.profileHeader}>
                     <Image
                         source={require('../../assets/images/profile.png')}
@@ -91,6 +87,11 @@ export default function Profile() {
                     <Text style={styles.joinText}>Joined {new Date(user?.created_at).toLocaleDateString()}</Text>
                 </View>
             </View>
+
+            <Pressable onPress={onLogout} style={{ padding: 10, borderRadius: 20, position: 'absolute', top: 20, right: 20 }}>
+                {/* <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log out</Text> */}
+                <Ionicons name="exit-outline" size={30} color="#ff0000cd" /> 
+            </Pressable>
 
             {/* bottom part   */}
             <View style={styles.bottomSection}>
@@ -111,10 +112,6 @@ export default function Profile() {
                         </Pressable>
                         ))}
                 </ScrollView>
-
-                <Pressable onPress={onLogout} style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 30 }}>
-                    <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log out</Text>
-                </Pressable>
 
                 <Modal visible={articleModalVisible} animationType="slide" transparent={true}>
                     <LinearGradient colors={['#00104f', '#0F0F0F', '#0F0F0F']} style={{ position: 'absolute', left: 0, right: 0, top: 145, height: 800, borderRadius: 30 }} />
@@ -137,8 +134,8 @@ export default function Profile() {
         :
         <View style={styles.container}>
             <LinearGradient
-                colors={['#07133f', '#07133f', '#090a10']}
-                style={StyleSheet.absoluteFillObject}
+                colors={['#00104f', '#0F0F0F', '#0F0F0F']}
+                style={{ position: 'absolute', left: 0, right: 0, top: -100, height: 1000, zIndex: -10 }}
             />
             <View style={[styles.topSection, {alignItems: "center", justifyContent: "center", width: "100%", height: "100%"}]}>
                 <Text style={styles.nameText}>Please sign in</Text>
@@ -152,10 +149,12 @@ export default function Profile() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#090a10c1',
+        backgroundColor: '#0000004D',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
     },
     topSection: {
-        paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight,
+        paddingTop: 10,
         paddingHorizontal: 20,
         alignItems: 'center',
         paddingBottom: 30,
@@ -177,8 +176,8 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     profileImage: {
-        width: 120,
-        height: 120,
+        width: 80,
+        height: 80,
         borderRadius: 60,
         marginBottom: 20,
     },
@@ -195,17 +194,17 @@ const styles = StyleSheet.create({
     },
     bottomSection: {
         flex: 1,
-        backgroundColor: '#0c0d11',
+        backgroundColor: '#0000004D',
         borderTopLeftRadius: 30,
         borderTopRightRadius: 30,
         paddingHorizontal: 15,
-        paddingTop: 30,
+        paddingTop: 20,
     },
     listHeaderContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 5,
+        paddingHorizontal: 20,
         marginBottom: 20,
     },
     listHeaderTitle: {
