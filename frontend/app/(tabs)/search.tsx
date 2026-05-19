@@ -34,10 +34,9 @@ export default function Search() {
   
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setOffset(0);
-    await fetchTopics();
+    await fetchTopics(0);
     setRefreshing(false);
-  }, []);
+  }, [articles, searchTerm]);
 
   useEffect(() => {
     checkAuth();
@@ -53,8 +52,8 @@ export default function Search() {
     setUser(u); 
   }
 
-  const fetchTopics = async () => {
-    const res = await dbSearchN(searchTerm, offset, RESULTS_PER_PAGE);
+  const fetchTopics = async (off: number) => {
+    const res = await dbSearchN(searchTerm, off, RESULTS_PER_PAGE);
 
     // set articles state from response data (handle null)
     if (res && res.data) {
@@ -68,8 +67,8 @@ export default function Search() {
         source_link: t.source_link,
         topic_id: t.id
       }));
-      setArticles(offset === 0 ? formatted : articles.concat(formatted));
-      setOffset(offset + RESULTS_PER_PAGE);
+      setArticles(off === 0 ? formatted : articles.concat(formatted));
+      setOffset(off + RESULTS_PER_PAGE);
     }
   }
 
@@ -80,7 +79,7 @@ export default function Search() {
       if (searchTerm.length === 0) {
         return;
       } else if (searchTerm !== lastSearch) {
-          fetchTopics();
+          fetchTopics(0);
           setLastSearch(searchTerm)
         } else {
           setArticles([]);
@@ -103,7 +102,7 @@ export default function Search() {
       <ScrollView style={styles.mainBody} contentContainerStyle={{ alignItems: 'center', gap: 10 }} showsVerticalScrollIndicator={false}
         onScroll={({nativeEvent}) => {
           if (isCloseToBottom(nativeEvent)) {
-            fetchTopics();
+            fetchTopics(offset);
           }
         }}
         refreshControl={

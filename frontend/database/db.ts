@@ -46,7 +46,7 @@ async function dbGetN(uid: String, offset: number, n: number, categories: string
 async function dbSearchN(searchTerm: String, offset: number, n: number) {
     try {
         const res = await sb.from("Topics").select()
-            .or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
+            .or(`title.ilike.%${searchTerm}%,original_title.ilike.%${searchTerm}%,authors.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
             .order("created_at", {ascending: false, nullsFirst: false})
             .range(offset, offset + n - 1);
 
