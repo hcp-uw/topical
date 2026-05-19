@@ -31,7 +31,7 @@ export default function Profile() {
         setRefreshing(true);
         await fetchLiked(user);
         setRefreshing(false);
-    }, []);
+    }, [liked]);
 
     useEffect(() => {
         checkAuthAndFetchLiked();

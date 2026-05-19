@@ -35,8 +35,8 @@ export default function Index() {
         <Text style={{ color: '#FFFFFF80', fontSize: 50, fontWeight: 700, textAlign: 'center', margin: 'auto', marginTop: 40 }}>Topical</Text>
       </View>
       <View style={{ width: "100%", flex: 1, gap: 20, backgroundColor: '#0000004D', paddingTop: 20, borderRadius: 30, padding: 20 }}>
-        <TextInput value={email} onChangeText={setEmail} style={[styles.input, {width: "100%"}]} placeholder={"Email..."}/>
-        <TextInput value={password} secureTextEntry onChangeText={setPassword} style={[styles.input, {width: "100%"}]} placeholder={"Password..."}/>
+        <TextInput value={email} onChangeText={setEmail} style={[styles.input, {width: "100%"}]} placeholder={"Email..."} autoCapitalize="none" placeholderTextColor="#A4A4A5"/>
+        <TextInput value={password} secureTextEntry onChangeText={setPassword} style={[styles.input, {width: "100%"}]} placeholder={"Password..."} autoCapitalize="none" placeholderTextColor="#A4A4A5"/>
         <Pressable onPress={onLogin} style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 30 }}>
           <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log In</Text>
         </Pressable>

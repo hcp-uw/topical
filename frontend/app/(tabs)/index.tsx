@@ -35,15 +35,14 @@ export default function Index() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setOffset(0);
-    await fetchTopics();
+    await fetchTopics(0);
     setRefreshing(false);
-  }, []);
+  }, [selectedCategories, articles]);
 
   useEffect(() => {
     const fetchAll = async () => {
       await checkAuth();
-      fetchTopics();
+      fetchTopics(offset);
       fetchCategories();
     }
 
@@ -71,9 +70,9 @@ export default function Index() {
     }
   }
 
-  const fetchTopics = async () => {
+  const fetchTopics = async (off: number) => {
     try {
-      const res = await dbGetN(user && user.id ? user.id : "null", offset, RESULTS_PER_PAGE, selectedCategories);
+      const res = await dbGetN(user && user.id ? user.id : "null", off, RESULTS_PER_PAGE, selectedCategories);
 
       // set articles state from response data (handle null)
       if (res && res.data) {
@@ -87,8 +86,8 @@ export default function Index() {
           source_link: t.source_link,
           topic_id: t.id
         }));
-        setArticles(offset === 0 ? formatted : articles.concat(formatted));
-        setOffset(offset + RESULTS_PER_PAGE);
+        setArticles(off === 0 ? formatted : articles.concat(formatted));
+        setOffset(off + RESULTS_PER_PAGE);
       }
     } catch(e) {
       console.error(e)
@@ -109,8 +108,7 @@ export default function Index() {
   }
 
   const onFilterSave = () => {
-    setArticles([])
-    fetchTopics();
+    fetchTopics(0);
     setFilterModalVisible(false);
   }
 
@@ -132,7 +130,7 @@ export default function Index() {
       <ScrollView style={styles.mainBody} contentContainerStyle={{ alignItems: 'center', gap: 10 }} showsVerticalScrollIndicator={false} scrollEventThrottle={400}
         onScroll={({nativeEvent}) => {
           if (isCloseToBottom(nativeEvent)) {
-            fetchTopics();
+            fetchTopics(offset);
           }
         }}
         refreshControl={
