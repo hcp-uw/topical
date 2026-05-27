@@ -38,7 +38,7 @@ def main():
         response = input(f"\nDownload first 3 PDFs as example? (y/n): ")
         if response.lower() == 'y':
             print("\n4. Downloading first 3 PDFs...")
-            scraper.download_all_pdfs(pdf_links[:3], pdfs_dir, delay = 1)
+            scraper.download_all_pdfs(pdf_links, pdfs_dir, delay = 0.01)
     
     # Always clean up the driver
     scraper.quit_driver()
