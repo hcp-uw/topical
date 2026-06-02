@@ -6,15 +6,16 @@ import { styles } from "@/styles";
 import { authSignUp } from "@/database/auth";
 
 export default function Index() {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [name, setName] = useState<string>("");
-  const router = useRouter();
+  const [email, setEmail] = useState<string>(""); // Contents of the email field.
+  const [password, setPassword] = useState<string>(""); // Contents of the password field. 
+  const [name, setName] = useState<string>(""); // Contents of the name field.
+  const router = useRouter(); // Page router.
 
+  // Triggers when the user presses the Sign Up button. If login is valid, redirects to explore page. Otherwise alerts the user. 
   const onSignUp = () => {
     const authRes = authSignUp(email, password, name);
     if (authRes === null) {
-      alert("Email or password is incorrect");
+      alert("An error occured. Please try again.");
       return;
     }
     setTimeout(() => {
@@ -22,6 +23,7 @@ export default function Index() {
     }, 0);
   };
 
+  // Triggers when the user presses the "Already have an account? Log in here" button. Redirects to the login page.
   const onLogin = () => {
     setTimeout(() => {
       router.replace('/auth/login');
@@ -35,14 +37,14 @@ export default function Index() {
         <Text style={{ color: '#FFFFFF80', fontSize: 50, fontWeight: 700, textAlign: 'center', margin: 'auto', marginTop: 40 }}>Topical</Text>
       </View>
       <View style={{ width: "100%", flex: 1, gap: 20, backgroundColor: '#0000004D', paddingTop: 20, borderRadius: 30, padding: 20 }}>
-        <TextInput value={email} onChangeText={setEmail} style={[styles.input, {width: "100%"}]} placeholder={"Email..."}/>
-        <TextInput value={password} secureTextEntry onChangeText={setPassword} style={[styles.input, {width: "100%"}]} placeholder={"Password..."}/>
-        <TextInput value={name} onChangeText={setName} style={[styles.input, {width: "100%"}]} placeholder={"Name..."}/>
+        <TextInput value={email} onChangeText={setEmail} style={[styles.input, {width: "100%"}]} placeholder={"Email..."} autoCapitalize="none" placeholderTextColor="#A4A4A5"/>
+        <TextInput value={password} secureTextEntry onChangeText={setPassword} style={[styles.input, {width: "100%"}]} placeholder={"Password..."} autoCapitalize="none" placeholderTextColor="#A4A4A5"/>
+        <TextInput value={name} onChangeText={setName} style={[styles.input, {width: "100%"}]} placeholder={"Name..."} placeholderTextColor="#A4A4A5"/>
         <Pressable onPress={onSignUp} style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 30 }}>
           <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Sign Up</Text>
         </Pressable>
         <Text style={{ color: '#FFFFFF80', fontSize: 14, marginTop: 10 }}>By continuing, you agree to the Privacy Policy and Terms of Service.</Text>
-        <Pressable onPress={onSignUp}>
+        <Pressable onPress={onLogin}>
           <Text style={{ fontWeight: 400, fontSize: 16, color: '#FFFFFF80' }}>Already have an account? <Text style={{ fontWeight: 400, color: '#FFFFFF' }}>Log in here</Text></Text>
         </Pressable>
       </View>

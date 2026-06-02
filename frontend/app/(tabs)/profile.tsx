@@ -21,28 +21,32 @@ export default function Profile() {
         topic_id: string
     }
     
-    const [user, setUser] = useState<User | null>(null);
-    const [liked, setLiked] = useState<articleData[]>([]);
-    const [modalArticle, setModalArticle] = useState<articleData | null>(null);
-    const [articleModalVisible, setArticleModalVisible] = useState(false);
-    const [refreshing, setRefreshing] = React.useState(false);
+    const [user, setUser] = useState<User | null>(null); // Current user.
+    const [liked, setLiked] = useState<articleData[]>([]); // List of liked articles. 
+    const [modalArticle, setModalArticle] = useState<articleData | null>(null); // 
+    const [articleModalVisible, setArticleModalVisible] = useState(false); // Toggles individual article modal.
+    const [refreshing, setRefreshing] = React.useState(false); // Toggles refresh graphic.
 
+    // Re-fetches topics
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await fetchLiked(user);
         setRefreshing(false);
-    }, []);
+    }, [liked]);
 
+    // Runs on page load, checks user auth and fetches liked articles.
     useEffect(() => {
         checkAuthAndFetchLiked();
     }, [])
 
+    // Checks user auth and fetches liked articles.
     const checkAuthAndFetchLiked = async () => {
         const u = await authCurSession();
         setUser(u);
         fetchLiked(u);
     }
 
+    // Fetches liked articles for the given user u.
     const fetchLiked = async (u: User | null) => {
         if (u) {
             const data = await dbGetUserLikes(u.id);
@@ -62,6 +66,7 @@ export default function Profile() {
         }
     }
 
+    // Triggers when the user presses the logout button. Signs them out and redirects to the login page.
     const onLogout = async () => {
         const authRes = await authSignOut();
         if (authRes !== null) {
@@ -73,6 +78,7 @@ export default function Profile() {
         }
     }
 
+    // Triggers when an article is clicked. Shows the modal with that article. 
     const onArticleClick = (article: articleData) => {
         setModalArticle(article);
         setArticleModalVisible(true);
@@ -100,7 +106,6 @@ export default function Profile() {
             </View>
 
             <Pressable onPress={onLogout} style={{ padding: 10, borderRadius: 20, position: 'absolute', top: 20, right: 20 }}>
-                {/* <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log out</Text> */}
                 <Ionicons name="exit-outline" size={30} color="#ff0000cd" /> 
             </Pressable>
 

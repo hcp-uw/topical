@@ -6,10 +6,11 @@ import { styles } from "@/styles";
 import { authLogIn } from "@/database/auth";
 
 export default function Index() {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const router = useRouter();
+  const [email, setEmail] = useState<string>(""); // Contents of the email field. 
+  const [password, setPassword] = useState<string>(""); // Contents of the password field. 
+  const router = useRouter(); // Page router.
 
+  // Triggers when the user presses the Log In button. If login is correct, redirects to explore page. Otherwise alerts the user. 
   const onLogin = async () => {
     const authRes = await authLogIn(email, password);
     if (authRes === null) {
@@ -22,6 +23,7 @@ export default function Index() {
     }
   };
 
+  // Triggers when the user clicks the "Don't have an account yet? Sign up here" button. Redirects to sign up page. 
   const onSignUp = () => {
     setTimeout(() => {
       router.replace('/auth/signup');
@@ -35,8 +37,8 @@ export default function Index() {
         <Text style={{ color: '#FFFFFF80', fontSize: 50, fontWeight: 700, textAlign: 'center', margin: 'auto', marginTop: 40 }}>Topical</Text>
       </View>
       <View style={{ width: "100%", flex: 1, gap: 20, backgroundColor: '#0000004D', paddingTop: 20, borderRadius: 30, padding: 20 }}>
-        <TextInput value={email} onChangeText={setEmail} style={[styles.input, {width: "100%"}]} placeholder={"Email..."}/>
-        <TextInput value={password} secureTextEntry onChangeText={setPassword} style={[styles.input, {width: "100%"}]} placeholder={"Password..."}/>
+        <TextInput value={email} onChangeText={setEmail} style={[styles.input, {width: "100%"}]} placeholder={"Email..."} autoCapitalize="none" placeholderTextColor="#A4A4A5"/>
+        <TextInput value={password} secureTextEntry onChangeText={setPassword} style={[styles.input, {width: "100%"}]} placeholder={"Password..."} autoCapitalize="none" placeholderTextColor="#A4A4A5"/>
         <Pressable onPress={onLogin} style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 30 }}>
           <Text style={{ fontWeight: 700, textAlign: 'center', fontSize: 22 }}>Log In</Text>
         </Pressable>

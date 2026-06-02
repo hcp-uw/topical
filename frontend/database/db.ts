@@ -7,17 +7,10 @@ if (sbKey === undefined) {
 }
 const sb = createClient(sbUrl, sbKey);
 
-// Get specific topic by ID
-async function dbGetTopic(id: String) {
-    try {
-        const res = await sb.from("Topics").select().eq("id", id.toLowerCase());
-        return res;
-    } catch (e) {
-        console.error(e)
-    }
-}
 
-// Get n topics that the user hasn't seen from the database
+// Fetches articles that the user with id uid hasn't seen from the database. Fetches n articles, offset by offset parameter. 
+// Limits categories of articles to categories parameter. If categories is empty, it does not limit by category. 
+// Returns query result, including error if there is one.
 async function dbGetN(uid: String, offset: number, n: number, categories: string[]) {
     try { 
         let userViews = await sb.from("views").select("topic_id").eq("user_id", uid)
@@ -43,10 +36,12 @@ async function dbGetN(uid: String, offset: number, n: number, categories: string
     }
 }
 
+// Searches the database for articles where the title, original title, authors, summary or category contains the searchTerm parameter.
+// Returns the query result, including error if there is one. 
 async function dbSearchN(searchTerm: String, offset: number, n: number) {
     try {
         const res = await sb.from("Topics").select()
-            .or(`title.ilike.*${searchTerm}*,original_title.ilike.*${searchTerm}*,authors.ilike.*${searchTerm}*,summary.ilike.*${searchTerm}*,category.ilike.*${searchTerm}*`)
+            .or(`title.ilike.%${searchTerm}%,original_title.ilike.%${searchTerm}%,authors.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
             .order("created_at", {ascending: false, nullsFirst: false})
             .range(offset, offset + n - 1);
 
@@ -56,6 +51,8 @@ async function dbSearchN(searchTerm: String, offset: number, n: number) {
     }
 }
 
+// Queries the database for all unique categories present. 
+// Returns the query result, including error if there is one. 
 async function dbGetCategories() {
     try {
         const res = await sb.rpc("get_categories");
@@ -66,6 +63,8 @@ async function dbGetCategories() {
     }
 }
 
+// Returns whether the user with id userId has liked the article with id topicId.
+// Alerts on failure. 
 async function dbGetLiked(userId: string, topicId: string) {
     try {
         const {data, error} = await sb.from("likes").select().eq("user_id", userId).eq("topic_id", topicId);
@@ -84,6 +83,7 @@ async function dbGetLiked(userId: string, topicId: string) {
     }
 }
 
+// Marks the article with id topicId as being viewed by the user with id userId.
 async function dbAddView(userId: string, topicId: string) {
     try {
         const {error} = await sb.from("views").upsert({user_id: userId, topic_id: topicId});
@@ -92,6 +92,8 @@ async function dbAddView(userId: string, topicId: string) {
     }
 }
 
+// If status parameter is true, adds a record to the database indicating that the user with id userId has liked article with id topicId.
+// If status parameter is false, removes any such record that already exists. 
 async function dbSetLiked(userId: string, topicId: string, status: boolean) {
     try {
         if (status) {
@@ -104,6 +106,8 @@ async function dbSetLiked(userId: string, topicId: string, status: boolean) {
     }
 }
 
+// Queries the database for all articles that have been liked by the user with id userId. 
+// Alerts on error, and returns the list of articles otherwise. 
 async function dbGetUserLikes(userId: string) {
     try {
         const {data, error} = await sb.from("likes").select("topic_id").eq("user_id", userId);
@@ -119,5 +123,4 @@ async function dbGetUserLikes(userId: string) {
     }
 }
 
-
-export {sb, dbGetTopic, dbGetN, dbSearchN, dbGetCategories, dbGetLiked, dbSetLiked, dbGetUserLikes}
+export {sb, dbGetN, dbSearchN, dbGetCategories, dbGetLiked, dbSetLiked, dbGetUserLikes}
