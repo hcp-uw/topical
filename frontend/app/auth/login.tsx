@@ -6,10 +6,11 @@ import { styles } from "@/styles";
 import { authLogIn } from "@/database/auth";
 
 export default function Index() {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const router = useRouter();
+  const [email, setEmail] = useState<string>(""); // Contents of the email field. 
+  const [password, setPassword] = useState<string>(""); // Contents of the password field. 
+  const router = useRouter(); // Page router.
 
+  // Triggers when the user presses the Log In button. If login is correct, redirects to explore page. Otherwise alerts the user. 
   const onLogin = async () => {
     const authRes = await authLogIn(email, password);
     if (authRes === null) {
@@ -22,6 +23,7 @@ export default function Index() {
     }
   };
 
+  // Triggers when the user clicks the "Don't have an account yet? Sign up here" button. Redirects to sign up page. 
   const onSignUp = () => {
     setTimeout(() => {
       router.replace('/auth/signup');

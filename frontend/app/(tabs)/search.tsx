@@ -23,35 +23,41 @@ export default function Search() {
     topic_id: string
   }
   
-  const [articles, setArticles] = useState<articleData[]>([]);
-  const [articleModalVisible, setArticleModalVisible] = useState(false);
-  const [modalArticle, setModalArticle] = useState<articleData | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>("");  
-  const [lastSearch, setLastSearch] = useState<string>("");  
-  const [user, setUser] = useState<User | null>(null);
-  const [offset, setOffset] = useState<number>(0);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [articles, setArticles] = useState<articleData[]>([]); // List of articles presented to the user.
+  const [articleModalVisible, setArticleModalVisible] = useState(false); // Toggles category filter modal.
+  const [modalArticle, setModalArticle] = useState<articleData | null>(null); // Determines which article is shown in modal.
+  const [searchTerm, setSearchTerm] = useState<string>(""); // The search term currently in the search box.
+  const [lastSearch, setLastSearch] = useState<string>(""); // The previously used search term. 
+  const [user, setUser] = useState<User | null>(null); // Current user. 
+  const [offset, setOffset] = useState<number>(0); // Number of articles displayed so far.
+  const [refreshing, setRefreshing] = useState<boolean>(false); // Toggles refresh graphic.
   
+  // Re-fetches topics
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchTopics(0);
     setRefreshing(false);
   }, [articles, searchTerm]);
 
+  // Runs on page load. Checks auth.
   useEffect(() => {
     checkAuth();
   }, [])
 
+  // Triggers when an article is clicked. Shows the modal with that article. 
   const onArticleClick = (article: articleData) => {
     setModalArticle(article);
     setArticleModalVisible(true);
   }
 
+  // Fetches current user auth state and updates user state variable.
   const checkAuth = async () => {
     const u = await authCurSession(); 
     setUser(u); 
   }
 
+  // Fetches for topics that this user hasn't seen yet, offset by the off parameter. 
+  // Updates the articles and offset states.  
   const fetchTopics = async (off: number) => {
     const res = await dbSearchN(searchTerm, off, RESULTS_PER_PAGE);
 
@@ -72,23 +78,24 @@ export default function Search() {
     }
   }
 
+  // Triggers when the user presses enter on their keyboard. Queries the database for matches of searchTerm and updates articles state.
   const onSearchClick = async () => {
     try {
-      setArticles([])
-      
       if (searchTerm.length === 0) {
         return;
       } else if (searchTerm !== lastSearch) {
-          fetchTopics(0);
-          setLastSearch(searchTerm)
-        } else {
-          setArticles([]);
-        }
+        fetchTopics(0);
+        setLastSearch(searchTerm)
+      } else {
+        setArticles([]);
+      }
     } catch(e) {
       console.error(e)
     }
   }
 
+  // Triggered whenever the user scrolls. 
+  // Returns true when the user is close to the bottom of the scroll element.
   const isCloseToBottom = ({layoutMeasurement, contentOffset, contentSize}: NativeScrollEvent) => {
     const paddingToBottom = 250;
     return layoutMeasurement.height + contentOffset.y >=
@@ -110,8 +117,6 @@ export default function Search() {
         }>
         { articles === null ?
           <View style={styles.splash}>
-            {/* <Text style={{ color: '#FFFFFF4D', fontSize: 60, fontWeight: 700 }}>🧫</Text>
-            <Text style={{ color: '#FFFFFF4D', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>Did you know: A teaspoon of soil contains more living organisms than there are people on Earth</Text> */}
           </View> : 
           articles.map((article, index) => (
           <Pressable style={{ width: "100%" }} key={index} onPress={() => onArticleClick(article)}>

@@ -23,22 +23,24 @@ export default function Index() {
     topic_id: string
   }
   
-  const [articles, setArticles] = useState<articleData[]>([])
-  const [articleModalVisible, setArticleModalVisible] = useState(false);
-  const [modalArticle, setModalArticle] = useState<articleData | null>(null);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [offset, setOffset] = useState<number>(0);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [articles, setArticles] = useState<articleData[]>([]); // List of articles presented to the user.
+  const [articleModalVisible, setArticleModalVisible] = useState(false); // Toggles individual article modal.
+  const [modalArticle, setModalArticle] = useState<articleData | null>(null); // Determines which article is shown in modal.
+  const [categories, setCategories] = useState<string[]>([]); // List of categories shown when the filter button is pressed.
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]); // List of categories selected by the user.
+  const [filterModalVisible, setFilterModalVisible] = useState(false); // Toggles category filter modal.
+  const [user, setUser] = useState<User | null>(null); // Current user.
+  const [offset, setOffset] = useState<number>(0); // Number of articles displayed so far.
+  const [refreshing, setRefreshing] = useState<boolean>(false); // Toggles refresh graphic.
 
+  // Re-fetches topics
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchTopics(0);
     setRefreshing(false);
   }, [selectedCategories, articles]);
 
+  // Runs on page load to check auth, fetch topics and fetch categories.
   useEffect(() => {
     const fetchAll = async () => {
       await checkAuth();
@@ -49,11 +51,13 @@ export default function Index() {
     fetchAll();
   }, []);
 
+  // Fetches current user auth state and updates user state variable.
   const checkAuth = async () => {
     const u = await authCurSession(); 
     setUser(u); 
   }
 
+  // Fetches all known categories and updates categories state.
   const fetchCategories = async () => {
     try {
       const categories = await dbGetCategories();
@@ -70,6 +74,8 @@ export default function Index() {
     }
   }
 
+  // Fetches for topics that this user hasn't seen yet, offset by the off parameter. 
+  // Updates the articles and offset states.  
   const fetchTopics = async (off: number) => {
     try {
       const res = await dbGetN(user && user.id ? user.id : "null", off, RESULTS_PER_PAGE, selectedCategories);
@@ -94,11 +100,13 @@ export default function Index() {
     }
   }
 
+  // Triggers when an article is clicked. Shows the modal with that article. 
   const onArticleClick = (article: articleData) => {
     setModalArticle(article);
     setArticleModalVisible(true);
   }
 
+  // Triggers when a category is toggled. Updates the selectedCategories state.
   const toggleCategory = (category: string) => {
     if (selectedCategories.includes(category)) {
       setSelectedCategories(selectedCategories.filter(c => c !== category))
@@ -107,11 +115,14 @@ export default function Index() {
     }
   }
 
+  // Triggers when the user saves the category filter. Fetches articles starting from the beginning (no offset).
   const onFilterSave = () => {
     fetchTopics(0);
     setFilterModalVisible(false);
   }
 
+  // Triggered whenever the user scrolls. 
+  // Returns true when the user is close to the bottom of the scroll element.
   const isCloseToBottom = ({layoutMeasurement, contentOffset, contentSize}: NativeScrollEvent) => {
     const paddingToBottom = 250;
     return layoutMeasurement.height + contentOffset.y >=
